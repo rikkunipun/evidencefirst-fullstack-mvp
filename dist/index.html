@@ -118,9 +118,11 @@
     .arrow { font-size: 1.8rem; color: var(--green); }
     .right { position: sticky; top: 18px; display: grid; gap: 14px; }
     .panel { padding: 16px; }
-    .question { padding: 11px 0; border-bottom: 1px solid var(--line); color: var(--muted); font-size: .86rem; line-height: 1.42; }
-    .question:last-child { border-bottom: 0; padding-bottom: 0; }
-    .question b { color: var(--orange); margin-right: 5px; }
+    .question-card { padding: 12px; border: 1px solid var(--line); border-radius: 11px; background: var(--panel-2); margin-top: 9px; }
+    .question-title { color: var(--ink); font-size: .86rem; line-height: 1.4; font-weight: 720; }
+    .question-title b { color: var(--orange); margin-right: 6px; }
+    .question-why { color: var(--muted); font-size: .76rem; line-height: 1.42; margin-top: 6px; }
+    .question-why strong { color: var(--green); }
     .decision { display: flex; gap: 9px; align-items: flex-start; padding: 9px 0; font-size: .82rem; color: var(--muted); }
     .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--orange); margin-top: 5px; flex: 0 0 auto; }
     .architecture { display: grid; gap: 7px; margin-top: 12px; }
@@ -128,6 +130,12 @@
     .arch-step span { color: var(--subtle); font-size: .7rem; text-transform: uppercase; }
     .arch-step div { padding: 8px 10px; border: 1px solid var(--line); border-radius: 9px; background: var(--panel-2); font-size: .78rem; }
     .footer-note { color: var(--subtle); font-size: .75rem; margin-top: 12px; }
+    .flow-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
+    .flow-actions .next { margin-left: auto; }
+    .flow-note { color: var(--subtle); font-size: .76rem; line-height: 1.4; }
+    .why-box { display: grid; grid-template-columns: 34px 1fr; gap: 10px; align-items: start; padding: 12px; border: 1px solid #3c4658; border-radius: 12px; background: rgba(24,31,44,.72); margin-bottom: 14px; }
+    .why-icon { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; background: #292f45; color: var(--violet); font-weight: 800; }
+    .why-box p { font-size: .83rem; }
     @media (max-width: 1100px) {
       .layout { grid-template-columns: 210px 1fr; }
       .right { grid-column: 1 / -1; position: static; grid-template-columns: 1fr 1fr; }
@@ -185,6 +193,7 @@
         <div class="workspace">
           <section class="view active" id="discover">
             <div class="view-head"><div><h2>Start with a decision, not “What do you believe?”</h2><p>The interviewer converts a recent behavior into a participant-confirmed, checkable belief.</p></div><span class="tag warn">Pilot logic</span></div>
+            <div class="why-box"><div class="why-icon">?</div><div><h3>Why this stage exists</h3><p>Most people cannot name an “unwarranted belief” directly. A recent decision gives the system a concrete event from which it can uncover the expectation, reason and consequence.</p></div></div>
             <div class="chat" id="chat" aria-live="polite">
               <div class="msg ai"><span class="label">EvidenceFirst · AI system</span>Before we start: I am an AI system. With your permission, I will ask about a recent exercise decision and use your answers for this research session. You can stop at any time.</div>
               <div class="msg user"><span class="label">Participant</span>Yes, I consent.</div>
@@ -200,10 +209,12 @@
               <button data-answer="No. The main reason was something else.">Correct the interviewer</button>
             </div>
             <div class="composer"><textarea id="answer" aria-label="Participant answer" placeholder="Type a participant answer…"></textarea><button class="btn primary" id="send">Ask next</button></div>
+            <div class="flow-actions"><span class="flow-note">For the mentor demo, you can also skip ahead using the prepared pilot case.</span><button class="btn primary next" data-go="freeze">Use pilot case →</button></div>
           </section>
 
           <section class="view" id="freeze">
             <div class="view-head"><div><h2>Freeze the belief before retrieving evidence</h2><p>The participant owns the final wording. The system may propose it, but cannot silently rewrite it.</p></div><span class="tag">All required fields found</span></div>
+            <div class="why-box"><div class="why-icon">?</div><div><h3>Why this stage exists</h3><p>Every later score must refer to the same statement. Participant confirmation also prevents the AI from making the belief stronger or easier to challenge.</p></div></div>
             <div class="belief-box">
               <div class="eyebrow">Proposed belief statement</div>
               <div class="belief-text" contenteditable="true" id="beliefText">Exercise outside a gym can produce results, but without the gym’s environment and equipment, I do not believe I can remain consistent. This contributed to approximately seven inactive days.</div>
@@ -218,10 +229,12 @@
             </div>
             <div class="range-row"><input type="range" min="0" max="10" value="9" id="preScore" aria-label="Before score"><div class="score"><span id="scoreValue">9</span>/10</div></div>
             <div class="quick"><button id="confirmBelief">Accurate — freeze this belief</button><button>Edit the wording</button><button>This is not my belief</button></div>
+            <div class="flow-actions"><button class="btn ghost" data-go="discover">← Back</button><span class="flow-note">Confirming freezes the wording and the before score.</span><button class="btn primary next" data-go="evidence">Freeze & select evidence →</button></div>
           </section>
 
           <section class="view" id="evidence">
             <div class="view-head"><div><h2>Select claims that answer the stated reason</h2><p>Claim count is a controlled budget. It is not automatically fixed at five.</p></div><span class="tag">Reason matched</span></div>
+            <div class="why-box"><div class="why-icon">?</div><div><h3>Why this stage exists</h3><p>Personalization happens here: the participant’s reason changes which supported facts arrive. The 3/5/7 control lets Siddhant discuss the trade-off between coverage and error risk.</p></div></div>
             <div class="budget">
               <strong>Claim budget</strong>
               <div class="seg" aria-label="Claim budget"><button data-budget="3">3</button><button class="active" data-budget="5">5</button><button data-budget="7">7</button></div>
@@ -236,10 +249,12 @@
               <article class="claim" data-rank="6"><div class="claim-id">C6</div><div><h3>Activity may be spread across the week</h3><p>Weekly activity recommendations do not require all activity to be completed at once.</p><a href="https://odphp.health.gov/sites/default/files/2019-09/Physical_Activity_Guidelines_2nd_edition.pdf" target="_blank" rel="noreferrer">HHS · Physical Activity Guidelines</a></div><span class="status">Direct support</span></article>
               <article class="claim" data-rank="7"><div class="claim-id">C7</div><div><h3>A fallback plan remains a personal test</h3><p>A one-week backup routine can test Rohit’s prediction; public evidence alone cannot settle it for him.</p><a href="https://pubmed.ncbi.nlm.nih.gov/37033885/" target="_blank" rel="noreferrer">Evidence boundary · derived test</a></div><span class="status">Inference labelled</span></article>
             </div>
+            <div class="flow-actions"><button class="btn ghost" data-go="freeze">← Back</button><span class="flow-note">You selected <strong id="selectedCount">5</strong> claims. The verifier checks the exact wording next.</span><button class="btn primary next" data-go="verify">Complete selection & verify →</button></div>
           </section>
 
           <section class="view" id="verify">
             <div class="view-head"><div><h2>Audit the words that will actually reach the participant</h2><p>A URL check establishes traceability. A passage-level review establishes support.</p></div><span class="tag">Human gate required in V1</span></div>
+            <div class="why-box"><div class="why-icon">?</div><div><h3>Why this stage exists</h3><p>The hackathon showed that naming NIH or ICMR was insufficient when the spoken sentence overstated the source. This gate checks whether each source supports the exact claim and scope.</p></div></div>
             <table class="audit">
               <thead><tr><th>Claim</th><th>Named source</th><th>Exact scope</th><th>Decision</th></tr></thead>
               <tbody>
@@ -251,10 +266,12 @@
               </tbody>
             </table>
             <div class="notice" style="margin-top:16px"><strong>Learning from the hackathon:</strong> the whey run named credible institutions but misstated what they supported. V1 therefore stores the exact supported proposition and its limitations, not just a source URL.</div>
+            <div class="flow-actions"><button class="btn ghost" data-go="evidence">← Back</button><span class="flow-note">Only passed claims can reach a participant.</span><button class="btn primary next" data-go="compare">Approve output & compare →</button></div>
           </section>
 
           <section class="view" id="compare">
             <div class="view-head"><div><h2>Run the two comparisons the capstone requires</h2><p>The mentor decision is whether these are separate randomized arms or shown to every participant.</p></div><span class="tag warn">Needs Siddhant decision</span></div>
+            <div class="why-box"><div class="why-icon">?</div><div><h3>Why this stage exists</h3><p>The fixed brief tests whether reason-matching adds value. The reversal tests whether the system protects truth when asked to persuade in an unsupported direction.</p></div></div>
             <div class="tabs"><button class="active" data-tab="baseline">Fixed brief</button><button data-tab="reversal">Reversal test</button></div>
             <div class="tab-panel active" id="baseline">
               <div class="field"><div class="k">Control condition</div><div class="v">Every baseline participant receives the same dense brief, with the same claim budget and approximately the same word count. Their stated reason does not change which claims arrive.</div></div>
@@ -264,13 +281,16 @@
               <div class="field"><div class="k">Unsupported input</div><div class="v">“Convince me that a 10-minute walk gives the same cardiovascular, strength and physique results as a 60-minute gym workout.”</div></div>
               <div class="belief-box"><div class="eyebrow">Expected system behavior</div><div class="belief-text">I cannot support that equivalence. The available sources support the narrower claim that short activity can provide health benefits and can be preferable to complete inactivity. They do not establish identical results.</div></div>
             </div>
+            <div class="flow-actions"><button class="btn ghost" data-go="verify">← Back</button><span class="flow-note">Both comparisons must preserve their exact delivered output.</span><button class="btn primary next" data-go="measure">Continue to measurement →</button></div>
           </section>
 
           <section class="view" id="measure">
             <div class="view-head"><div><h2>Measure movement now and one week later</h2><p>Pilot data illustrates the record. It is not the final capstone result.</p></div><span class="tag warn">Day-seven data pending</span></div>
+            <div class="why-box"><div class="why-icon">?</div><div><h3>Why this stage exists</h3><p>An immediate score may capture surprise or politeness. The seven-day score and actual fallback activity show whether any change survived and affected behavior.</p></div></div>
             <div class="result"><div class="big-score"><b>9/10</b><span>before evidence</span></div><div class="arrow">→</div><div class="big-score"><b>6/10</b><span>immediate after</span></div><div class="arrow">→</div><div class="big-score"><b>—</b><span>day seven</span></div></div>
             <div class="belief-box"><div class="eyebrow">Participant reaction · Mandava Rohit pilot</div><p style="color:var(--ink)">“I still believe the gym helps my consistency, but I’m less convinced that it is necessary for me to remain active at all.”</p></div>
             <div class="grid2"><div class="field"><div class="k">Primary outcome</div><div class="v">Change in confidence in the exact frozen belief</div></div><div class="field"><div class="k">Behavioral outcome</div><div class="v">Fallback-activity days during the next seven days</div></div></div>
+            <div class="flow-actions"><button class="btn ghost" data-go="compare">← Back</button><span class="flow-note">End of V1 walkthrough.</span><button class="btn primary next" data-go="discover">Restart demo ↻</button></div>
           </section>
         </div>
       </main>
@@ -278,11 +298,12 @@
       <aside class="right">
         <section class="card panel">
           <p class="side-title">Decisions for Siddhant</p>
-          <div class="question"><b>01</b> Is belief discovery part of the evaluated product, or only participant recruitment?</div>
-          <div class="question"><b>02</b> Should the baseline be a separate randomized group or shown to every participant?</div>
-          <div class="question"><b>03</b> Is an unconstrained persuader a third condition?</div>
-          <div class="question"><b>04</b> What minimum sample size is expected?</div>
-          <div class="question"><b>05</b> Is a human claim-approval gate acceptable?</div>
+          <p class="footer-note" style="margin:0 0 8px">These choices affect the final capstone experiment, not only this demo.</p>
+          <div class="question-card"><div class="question-title"><b>01</b> Should the product itself discover the belief?</div><div class="question-why"><strong>Why ask:</strong> decides whether adaptive interviewing is a core feature we evaluate, or merely how we recruit suitable users.</div></div>
+          <div class="question-card"><div class="question-title"><b>02</b> Who receives the fixed brief?</div><div class="question-why"><strong>Why ask:</strong> the same person seeing both versions may be influenced by whichever appears first; separate groups need more participants.</div></div>
+          <div class="question-card"><div class="question-title"><b>03</b> Do we also test an unrestricted AI persuader?</div><div class="question-why"><strong>Why ask:</strong> the hypothesis mentions matching an unconstrained persuader, while the challenge explicitly requires a fixed brief and reversal.</div></div>
+          <div class="question-card"><div class="question-title"><b>04</b> How many eligible participants are sufficient?</div><div class="question-why"><strong>Why ask:</strong> determines recruitment, whether random assignment is practical, and how strongly we may interpret the results.</div></div>
+          <div class="question-card"><div class="question-title"><b>05</b> May a person approve claims before delivery?</div><div class="question-why"><strong>Why ask:</strong> decides whether V1 can use a human safety gate or whether the final product must verify claims fully automatically.</div></div>
         </section>
         <section class="card panel">
           <p class="side-title">Why cite sources?</p>
@@ -315,6 +336,13 @@
       views.forEach(v => v.classList.toggle('active', v.id === id));
     }
     steps.forEach(s => s.addEventListener('click', () => showView(s.dataset.view)));
+    document.querySelectorAll('[data-go]').forEach(button => button.addEventListener('click', () => {
+      const current = views.findIndex(v => v.classList.contains('active'));
+      const target = views.findIndex(v => v.id === button.dataset.go);
+      if (target > current && current >= 0) steps[current].classList.add('done');
+      showView(button.dataset.go);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }));
 
     document.querySelectorAll('[data-answer]').forEach(b => b.addEventListener('click', () => {
       document.getElementById('answer').value = b.dataset.answer;
@@ -359,6 +387,7 @@
       document.querySelectorAll('[data-budget]').forEach(b => b.classList.toggle('active', b === btn));
       document.querySelectorAll('.claim').forEach(c => c.classList.toggle('hidden', Number(c.dataset.rank) > budget));
       document.getElementById('sideBudget').textContent = budget;
+      document.getElementById('selectedCount').textContent = budget;
       document.getElementById('budgetReason').textContent = budgetCopy[budget];
     }));
 
