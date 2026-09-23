@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="EvidenceFirst V1 system design for mentor review." />
+  <title>EvidenceFirst — System Design</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23131924'/%3E%3Cpath d='M17 33l9 9 21-22' fill='none' stroke='%2368e0b4' stroke-width='7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+  <style>
+    :root {
+      --bg:#090d14; --panel:#121824; --panel2:#171f2d; --line:#2a3445;
+      --ink:#f4f7fb; --muted:#aab3c4; --subtle:#737e92;
+      --ai:#aa9cff; --ai-bg:#272344; --rule:#ffb16a; --rule-bg:#402b1d;
+      --human:#68e0b4; --human-bg:#173c34; --data:#71b7ff; --data-bg:#17314a;
+      font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      color-scheme:dark;
+    }
+    *{box-sizing:border-box} body{margin:0;min-height:100vh;background:radial-gradient(circle at 8% 0,#17213a 0,transparent 28%),var(--bg);color:var(--ink)}
+    button,a{font:inherit} a{color:inherit}.shell{max-width:1580px;margin:auto;padding:20px}
+    header{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:16px}.brand{display:flex;align-items:center;gap:12px}.logo{width:42px;height:42px;border:1px solid var(--line);border-radius:12px;background:var(--panel);display:grid;place-items:center}.logo svg{width:24px}h1{font-size:1.28rem;margin:0;letter-spacing:-.02em}.sub{color:var(--muted);font-size:.83rem;margin-top:2px}.actions{display:flex;gap:8px;align-items:center}.btn{border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--ink);padding:9px 12px;text-decoration:none;cursor:pointer}.btn:hover{filter:brightness(1.15)}.btn.primary{background:var(--human);color:#071d17;border-color:var(--human);font-weight:750}
+    .summary{display:grid;grid-template-columns:1fr auto;gap:16px;align-items:center;background:linear-gradient(135deg,#172030,#101721);border:1px solid var(--line);border-radius:15px;padding:16px 18px;margin-bottom:14px}.summary strong{display:block;font-size:1.08rem;margin-bottom:4px}.summary p{margin:0;color:var(--muted);line-height:1.45;font-size:.9rem}.legend{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}.chip{padding:6px 9px;border-radius:999px;border:1px solid var(--line);font-size:.72rem;font-weight:700}.chip.ai{color:var(--ai);background:var(--ai-bg)}.chip.rule{color:var(--rule);background:var(--rule-bg)}.chip.human{color:var(--human);background:var(--human-bg)}.chip.data{color:var(--data);background:var(--data-bg)}
+    .stage{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:14px;align-items:start}.canvas,.inspector,.bottom-card{background:rgba(18,24,36,.96);border:1px solid var(--line);border-radius:16px}.canvas{padding:18px;overflow:auto}.inspector{position:sticky;top:16px;padding:17px;min-height:460px}
+    .lane{display:grid;grid-template-columns:115px minmax(900px,1fr);gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}.lane:last-child{border-bottom:0}.lane-label{padding-top:8px}.lane-label b{font-size:.76rem;text-transform:uppercase;letter-spacing:.1em}.lane-label p{color:var(--subtle);font-size:.7rem;line-height:1.35;margin:5px 0 0}.flow{display:flex;align-items:center;gap:9px;min-height:74px}.node{appearance:none;text-align:left;min-width:142px;max-width:172px;border:1px solid var(--line);border-radius:12px;padding:11px;background:var(--panel2);color:var(--ink);cursor:pointer;transition:.15s transform,.15s border-color}.node:hover,.node.active{transform:translateY(-2px);border-color:#5b6c88}.node.active{box-shadow:0 0 0 2px rgba(113,183,255,.12)}.node b{display:block;font-size:.82rem;line-height:1.25}.node span{display:block;color:var(--muted);font-size:.68rem;line-height:1.3;margin-top:5px}.node.ai{border-color:#504985}.node.rule{border-color:#775034}.node.human{border-color:#356a5a}.node.data{border-color:#315f88}.arrow{color:#657189;font-size:1.1rem;flex:0 0 auto}.branch{display:grid;grid-template-rows:1fr 1fr;gap:7px}.branch .node{min-width:175px}.gate{clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);width:116px;height:92px;padding:24px 17px;border-radius:0;text-align:center;display:grid;place-items:center}.gate b{font-size:.72rem}.small-node{min-width:122px}.loop-box{border:1px dashed #48536a;border-radius:14px;padding:8px;display:flex;align-items:center;gap:8px;background:rgba(12,17,25,.4)}
+    .eyebrow{font-size:.69rem;text-transform:uppercase;letter-spacing:.11em;color:var(--subtle);margin-bottom:8px}.inspector h2{font-size:1.15rem;margin:0 0 8px}.inspector>p{font-size:.84rem;color:var(--muted);line-height:1.5;margin:0 0 14px}.meta{display:grid;grid-template-columns:86px 1fr;gap:8px;padding:9px 0;border-top:1px solid var(--line);font-size:.78rem}.meta span{color:var(--subtle)}.meta div{line-height:1.4}.risk{margin-top:13px;padding:11px;border-radius:10px;background:#30211c;border-left:3px solid var(--rule);font-size:.78rem;color:#e6c5a5;line-height:1.42}.talk{margin-top:14px;padding:12px;border-radius:11px;background:#111b28;border:1px solid #29445e}.talk p{color:#c5d5e8;font-size:.78rem;line-height:1.46;margin:0}.hint{color:var(--subtle);font-size:.7rem;margin-top:12px}
+    .bottom{display:grid;grid-template-columns:1.15fr .85fr;gap:14px;margin-top:14px}.bottom-card{padding:17px}.bottom-card h2{font-size:1rem;margin:0 0 12px}.build{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}.build-step{border:1px solid var(--line);border-radius:11px;background:var(--panel2);padding:11px}.build-step em{display:block;color:var(--human);font-style:normal;font-size:.66rem;text-transform:uppercase;letter-spacing:.09em}.build-step b{display:block;font-size:.78rem;margin-top:5px;line-height:1.3}.build-step p{color:var(--subtle);font-size:.68rem;line-height:1.35;margin:5px 0 0}.decision{display:grid;grid-template-columns:24px 1fr;gap:8px;padding:8px 0;border-bottom:1px solid var(--line);font-size:.78rem;color:var(--muted);line-height:1.4}.decision:last-child{border-bottom:0}.n{width:22px;height:22px;display:grid;place-items:center;border-radius:7px;background:var(--rule-bg);color:var(--rule);font-size:.65rem;font-weight:800}
+    @media(max-width:1100px){.stage{grid-template-columns:1fr}.inspector{position:static}.bottom{grid-template-columns:1fr}.build{grid-template-columns:repeat(3,1fr)}}
+    @media(max-width:720px){.shell{padding:11px}.summary{grid-template-columns:1fr}.legend{justify-content:flex-start}.lane{grid-template-columns:1fr}.flow{min-width:1020px}.canvas{padding:13px}.build{grid-template-columns:1fr 1fr}.actions{flex-direction:column;align-items:flex-end}}
+    @media print{body{background:white;color:#111}.actions,.hint{display:none}.summary,.canvas,.inspector,.bottom-card{box-shadow:none;background:white;border-color:#bbb}.stage{grid-template-columns:1fr 300px}.lane{grid-template-columns:100px 1fr}.flow{transform:scale(.78);transform-origin:left center;width:128%}.node{color:#111;background:white}.sub,.summary p,.node span,.inspector>p,.meta span,.decision{color:#444}}
+  </style>
+</head>
+<body>
+<div class="shell">
+  <header>
+    <div class="brand"><div class="logo"><svg viewBox="0 0 24 24"><path d="M4 12.5l5 5L20 6" fill="none" stroke="#68e0b4" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div><h1>EvidenceFirst · System Design</h1><div class="sub">V1 mentor review · source-gated belief discovery and persuasion</div></div></div>
+    <div class="actions"><button class="btn" onclick="window.print()">Print / Save PDF</button><a class="btn primary" href="./index.html">Open product walkthrough</a></div>
+  </header>
+
+  <section class="summary">
+    <div><strong>Two controlled loops, one immutable evidence trail</strong><p>The interviewer discovers and freezes an eligible belief. The persuader selects only reason-relevant evidence, blocks unsupported claims, and records immediate and seven-day outcomes.</p></div>
+    <div class="legend"><span class="chip ai">LLM judgment</span><span class="chip rule">Deterministic rule</span><span class="chip human">Human gate</span><span class="chip data">Stored record</span></div>
+  </section>
+
+  <div class="stage">
+    <section class="canvas" aria-label="EvidenceFirst architecture">
+      <div class="lane">
+        <div class="lane-label"><b>Participant</b><p>Starts from a recent real decision.</p></div>
+        <div class="flow">
+          <button class="node rule" data-key="consent"><b>Consent + AI disclosure</b><span>Permission, recording and machine identity</span></button><span class="arrow">→</span>
+          <button class="node ai" data-key="interview"><b>Adaptive interviewer</b><span>Ask only for the next missing field</span></button><span class="arrow">→</span>
+          <button class="node data" data-key="belief"><b>Belief record</b><span>Reason, decision, consequence, cost</span></button><span class="arrow">→</span>
+          <button class="node rule gate" data-key="eligibility"><b>Eligible?</b></button><span class="arrow">→</span>
+          <div class="branch"><button class="node rule small-node" data-key="park"><b>Park / reject</b><span>Explain missing criterion</span></button><button class="node human" data-key="freeze"><b>Freeze belief</b><span>Confirm wording + score</span></button></div>
+        </div>
+      </div>
+
+      <div class="lane">
+        <div class="lane-label"><b>Experiment</b><p>Controls what each participant receives.</p></div>
+        <div class="flow">
+          <button class="node rule" data-key="assign"><b>Condition assignment</b><span>Preserve comparable groups</span></button><span class="arrow">→</span>
+          <div class="branch"><button class="node ai" data-key="personalized"><b>Personalized path</b><span>Reason changes which facts arrive</span></button><button class="node rule" data-key="fixed"><b>Fixed brief path</b><span>Same verified message for everyone</span></button></div><span class="arrow">→</span>
+          <button class="node data" data-key="run"><b>Run ledger</b><span>Condition, timestamps and exact outputs</span></button>
+        </div>
+      </div>
+
+      <div class="lane">
+        <div class="lane-label"><b>Persuasion</b><p>Bounded drafting from approved evidence.</p></div>
+        <div class="flow">
+          <div class="loop-box"><button class="node ai" data-key="decompose"><b>Reason decomposition</b><span>Split fact, preference and prediction</span></button><span class="arrow">→</span><button class="node rule" data-key="retrieve"><b>Evidence retrieval</b><span>Approved IDs and exact passages</span></button><span class="arrow">→</span><button class="node data" data-key="map"><b>Evidence map</b><span>Support, contradiction and unknowns</span></button></div><span class="arrow">→</span>
+          <button class="node ai" data-key="draft"><b>Persuasion planner</b><span>Acknowledge, challenge, replace</span></button>
+        </div>
+      </div>
+
+      <div class="lane">
+        <div class="lane-label"><b>Safety</b><p>No passage support means no delivered claim.</p></div>
+        <div class="flow">
+          <button class="node ai" data-key="extract"><b>Atomic claim extractor</b><span>One checkable proposition per row</span></button><span class="arrow">→</span>
+          <button class="node rule gate" data-key="verify"><b>All pass?</b></button><span class="arrow">→</span>
+          <div class="branch"><button class="node ai" data-key="repair"><b>Repair loop</b><span>Remove, qualify, rewrite or refuse</span></button><button class="node human" data-key="approve"><b>Human approval</b><span>V1 release gate</span></button></div><span class="arrow">→</span>
+          <button class="node data" data-key="deliver"><b>Immutable delivery</b><span>Store exactly what the person saw</span></button>
+        </div>
+      </div>
+
+      <div class="lane">
+        <div class="lane-label"><b>Measurement</b><p>Belief movement plus behavior.</p></div>
+        <div class="flow">
+          <button class="node data" data-key="immediate"><b>Immediate measure</b><span>Same belief score + reaction</span></button><span class="arrow">→</span>
+          <button class="node rule" data-key="followup"><b>Seven-day follow-up</b><span>Schedule the same question</span></button><span class="arrow">→</span>
+          <button class="node data" data-key="outcomes"><b>Outcome record</b><span>Retained score, behavior and audit rate</span></button><span class="arrow">→</span>
+          <button class="node rule" data-key="reversal"><b>Reversal test</b><span>Refuse unsupported persuasion</span></button>
+        </div>
+      </div>
+    </section>
+
+    <aside class="inspector" aria-live="polite">
+      <div class="eyebrow" id="control">Select a component</div>
+      <h2 id="title">How to present this diagram</h2>
+      <p id="purpose">Begin at the top-left and follow the five horizontal lanes. Click any component to explain its job, inputs, outputs and failure rule.</p>
+      <div class="meta"><span>Input</span><div id="input">A real participant describing a recent consequential decision</div></div>
+      <div class="meta"><span>Output</span><div id="output">A verified intervention and auditable measurement record</div></div>
+      <div class="meta"><span>Owner</span><div id="owner">LLM judgment, deterministic rules and human approval are kept separate</div></div>
+      <div class="risk" id="failure"><strong>Core safety rule:</strong> no supporting passage means no delivered claim.</div>
+      <div class="talk"><div class="eyebrow">What to say</div><p id="talk">“The design contains two controlled loops: discovery and persuasion. Each probabilistic model decision is surrounded by a deterministic record or gate, and V1 keeps a human check immediately before delivery.”</p></div>
+      <div class="hint">Tip: click the highlighted nodes while screen sharing instead of reading every label.</div>
+    </aside>
+  </div>
+
+  <div class="bottom">
+    <section class="bottom-card">
+      <h2>What to build first</h2>
+      <div class="build">
+        <div class="build-step"><em>01 · prove intake</em><b>Belief record + eligibility</b><p>Reject unsuitable cases without inventing cost.</p></div>
+        <div class="build-step"><em>02 · bound knowledge</em><b>One-domain evidence library</b><p>Exact passages, scope and exclusions.</p></div>
+        <div class="build-step"><em>03 · prove safety</em><b>Claim audit + human gate</b><p>Store every pass, rewrite and refusal.</p></div>
+        <div class="build-step"><em>04 · test hypothesis</em><b>Personalized vs fixed</b><p>Control claim and word budgets.</p></div>
+        <div class="build-step"><em>05 · prove outcome</em><b>Now + day seven</b><p>Measure belief retention and behavior.</p></div>
+      </div>
+    </section>
+    <section class="bottom-card">
+      <h2>Decisions to get from Siddhant</h2>
+      <div class="decision"><span class="n">1</span><span>Is belief discovery evaluated as part of the product?</span></div>
+      <div class="decision"><span class="n">2</span><span>Separate participants or both interventions per participant?</span></div>
+      <div class="decision"><span class="n">3</span><span>What establishes a qualifying cost and acceptable evidence?</span></div>
+      <div class="decision"><span class="n">4</span><span>Is a human approval gate acceptable in the final V1?</span></div>
+      <div class="decision"><span class="n">5</span><span>What participant count and delayed outcome are expected?</span></div>
+    </section>
+  </div>
+</div>
+
+<script>
+  const details = {
+    consent:{c:'Deterministic rule',t:'Consent and AI disclosure',p:'Establishes permission to record and makes clear that the participant is speaking with a machine.',i:'Participant acknowledgement',o:'Timestamped consent record',w:'Workflow rule',f:'Stop immediately when consent is absent.',s:'“Every run begins with explicit machine disclosure and consent. No belief data is used before this record exists.”'},
+    interview:{c:'LLM judgment',t:'Adaptive interviewer',p:'Asks one neutral question at a time for the next missing field rather than asking the person to name a belief directly.',i:'Recent decision plus current belief fields',o:'Candidate situation, belief, reason, consequence and cost',w:'Bounded LLM call',f:'Park the case when no stable belief appears within the question budget.',s:'“The interviewer starts from a recent decision. It does not assume a belief or suggest a cost.”'},
+    belief:{c:'Stored record',t:'Belief record',p:'Turns the conversation into inspectable fields that every later stage uses.',i:'Interview answers',o:'Structured belief case with provenance',w:'Database schema',f:'Every extracted field must link back to the participant’s exact words.',s:'“This record prevents later stages from silently changing what the participant originally meant.”'},
+    eligibility:{c:'Deterministic rule',t:'Eligibility gate',p:'Checks whether the case is factual, consequential, verifiable and within scope.',i:'Belief record',o:'Eligible, needs clarification, parked or rejected',w:'Rules with bounded classification',f:'No demonstrated money, time or health cost means the case cannot enter the main experiment.',s:'“The system must be able to reject users. Seven inactive days alone are a behavior count, not proven cost.”'},
+    park:{c:'Deterministic rule',t:'Park or reject',p:'Explains which criterion is missing without forcing the conversation into an eligible case.',i:'Failed eligibility result',o:'Reason for exclusion and optional next question',w:'Workflow rule',f:'Never invent a consequence or strengthen a participant’s statement.',s:'“A rejected case remains useful pilot research, but it is not counted as a qualifying participant.”'},
+    freeze:{c:'Human gate',t:'Freeze belief and baseline',p:'The participant edits and confirms the exact statement that will be measured throughout the study.',i:'Eligible belief record',o:'Confirmed wording and 0–10 score',w:'Participant approval',f:'All later scores must refer to the same frozen statement.',s:'“The participant owns the final wording; the AI cannot rewrite it into an easier target.”'},
+    assign:{c:'Deterministic rule',t:'Condition assignment',p:'Assigns an eligible participant to the approved comparison without choosing based on expected outcome.',i:'Frozen eligible case',o:'Personalized or fixed-brief condition',w:'Randomization or mentor-approved rule',f:'Preserve assignment and prevent condition switching after results appear.',s:'“This isolates whether reason-based fact selection adds value beyond a strong general brief.”'},
+    personalized:{c:'LLM judgment',t:'Personalized path',p:'Uses the stated reason to choose which approved facts arrive. Tone and claim budget remain controlled.',i:'Reason subclaims plus evidence library',o:'Reason-targeted evidence plan',w:'Constrained selector',f:'The model may select approved evidence IDs; it may not invent evidence.',s:'“Personalization changes fact selection, not politeness or style.”'},
+    fixed:{c:'Deterministic rule',t:'Fixed brief path',p:'Serves the same verified message to every participant regardless of their stated reason.',i:'Frozen belief and baseline score',o:'Identical comparison response',w:'Stored brief',f:'Do not adapt the content after seeing the participant’s reason.',s:'“The fixed brief answers whether a good brochure performs as well as reason-targeted evidence.”'},
+    run:{c:'Stored record',t:'Run ledger',p:'Preserves assignment, versions, timestamps and every participant-facing output.',i:'All experiment events',o:'Immutable audit trail',w:'Database and content hashes',f:'Corrections become new records and never overwrite the original delivery.',s:'“This directly fixes the hackathon’s original-delivery evidence gap.”'},
+    decompose:{c:'LLM judgment',t:'Reason decomposition',p:'Separates factual subclaims, values, preferences and personal predictions.',i:'Frozen belief and stated reason',o:'Atomic subclaims with type labels',w:'Structured LLM output',f:'Values and preferences are not treated as factual errors; personal predictions remain uncertain.',s:'“The system challenges only the checkable part of the reason.”'},
+    retrieve:{c:'Deterministic rule',t:'Evidence retrieval',p:'Looks up only approved evidence units for the selected domain.',i:'Atomic factual subclaims',o:'Candidate source passages and metadata',w:'Curated store lookup',f:'V1 has no unrestricted live-web factual generation.',s:'“I am bounding V1 to one domain so evidence can be audited before any participant sees it.”'},
+    map:{c:'Stored record',t:'Evidence map',p:'Records whether each subclaim is supported, contradicted, mixed or currently unknown.',i:'Subclaims plus retrieved passages',o:'Claim-to-passage map with caveats',w:'Structured evidence record',f:'Unknown evidence produces uncertainty or refusal, never a confident correction.',s:'“The map preserves what the source supports and what it does not establish.”'},
+    draft:{c:'LLM judgment',t:'Persuasion planner',p:'Restates the belief fairly, acknowledges supported concerns, challenges only unsupported steps and proposes a narrower replacement.',i:'Evidence map and claim budget',o:'Draft participant response',w:'Bounded LLM generation',f:'Every factual sentence must cite an evidence-unit ID before verification.',s:'“Persuasion comes from relevance: it addresses the reason the participant is still defending.”'},
+    extract:{c:'LLM judgment',t:'Atomic claim extractor',p:'Splits the draft into independently checkable factual propositions.',i:'Draft response',o:'Claim rows with qualifiers',w:'Structured verifier call',f:'Compound sentences are split before a support decision is made.',s:'“We audit the exact words delivered, not a cleaner summary written afterward.”'},
+    verify:{c:'Deterministic + verifier',t:'Claim verification gate',p:'Checks source presence, passage support, population, outcome, scope and retained qualifications.',i:'Atomic claims plus evidence map',o:'Pass, qualify, rewrite, remove or refuse',w:'Rules plus verifier LLM',f:'Every factual claim must pass. A valid URL alone is insufficient.',s:'“This is the core truth gate: citation presence is traceability; passage entailment is support.”'},
+    repair:{c:'LLM judgment',t:'Repair loop',p:'Uses verifier feedback to narrow, qualify or remove a failed claim.',i:'Failed claim and reason',o:'Revised draft or refusal',w:'Bounded retries',f:'When retries are exhausted, remove the claim or refuse the unsupported direction.',s:'“The system loses density before it sacrifices source support.”'},
+    approve:{c:'Human gate',t:'Human approval',p:'Lets a researcher inspect the delivered sentence beside its exact passage during V1.',i:'All passed claims and final draft',o:'Approved or rejected delivery',w:'Human reviewer',f:'No participant delivery occurs without approval in V1.',s:'“I want Siddhant’s guidance on whether this gate may remain in the final capstone.”'},
+    deliver:{c:'Stored record',t:'Immutable delivery',p:'Delivers the approved response and stores the exact participant-facing text.',i:'Approved response',o:'Timestamped delivery record',w:'Application service',f:'Later edits are separate versions and cannot alter the historical run.',s:'“This creates the receipt the hackathon review said was missing.”'},
+    immediate:{c:'Stored record',t:'Immediate measurement',p:'Re-asks the score for the exact frozen statement and records the participant’s explanation.',i:'Delivered response',o:'Post-score plus changed/resisted/complicated reaction',w:'Form and database',f:'Do not substitute a new or weaker belief statement.',s:'“The explanation matters because a score drop alone does not show which evidence worked.”'},
+    followup:{c:'Deterministic rule',t:'Seven-day follow-up',p:'Schedules the same belief measure after enough time has passed for behavior to occur.',i:'Original run date and frozen statement',o:'Due follow-up task',w:'Scheduler',f:'First interventions must finish early enough to collect genuine day-seven data.',s:'“The delayed measure separates temporary surprise from retained revision.”'},
+    outcomes:{c:'Stored record',t:'Outcome record',p:'Combines belief retention, behavior, comparison condition and unsupported-claim rate.',i:'Immediate and delayed measurements',o:'Auditable experiment result',w:'Analysis dataset',f:'With a small sample, report descriptive results and individual trajectories without overstating significance.',s:'“Success requires persuasion and source safety; behavior is a secondary but stronger consequence measure.”'},
+    reversal:{c:'Deterministic rule',t:'Reversal test',p:'Points the system toward a claim the evidence does not support and checks that it refuses.',i:'Unsupported persuasion request',o:'Refusal plus narrower supported statement',w:'Evaluation harness',f:'Any unsupported persuasive output fails the safety hypothesis.',s:'“The reversal demonstrates that the verifier controls the persuader rather than decorating it with citations.”'}
+  };
+
+  const nodes=[...document.querySelectorAll('.node[data-key]')];
+  const els={c:document.getElementById('control'),t:document.getElementById('title'),p:document.getElementById('purpose'),i:document.getElementById('input'),o:document.getElementById('output'),w:document.getElementById('owner'),f:document.getElementById('failure'),s:document.getElementById('talk')};
+  nodes.forEach(node=>node.addEventListener('click',()=>{
+    nodes.forEach(n=>n.classList.toggle('active',n===node));
+    const d=details[node.dataset.key];
+    els.c.textContent=d.c;els.t.textContent=d.t;els.p.textContent=d.p;els.i.textContent=d.i;els.o.textContent=d.o;els.w.textContent=d.w;els.f.innerHTML='<strong>Failure rule:</strong> '+d.f;els.s.textContent=d.s;
+  }));
+</script>
+</body>
+</html>
