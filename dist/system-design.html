@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="description" content="EvidenceFirst V1 system design for mentor review." />
+  <meta name="description" content="EvidenceFirst V2 system design: interview-tested discovery and source-gated persuasion." />
   <title>EvidenceFirst — System Design</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23131924'/%3E%3Cpath d='M17 33l9 9 21-22' fill='none' stroke='%2368e0b4' stroke-width='7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
   <style>
@@ -31,12 +31,12 @@
 <body>
 <div class="shell">
   <header>
-    <div class="brand"><div class="logo"><svg viewBox="0 0 24 24"><path d="M4 12.5l5 5L20 6" fill="none" stroke="#68e0b4" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div><h1>EvidenceFirst · System Design</h1><div class="sub">V1 mentor review · source-gated belief discovery and persuasion</div></div></div>
+    <div class="brand"><div class="logo"><svg viewBox="0 0 24 24"><path d="M4 12.5l5 5L20 6" fill="none" stroke="#68e0b4" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div><h1>EvidenceFirst · System Design</h1><div class="sub">V2 · interview-tested discovery, hard eligibility gates and source-gated persuasion</div></div></div>
     <div class="actions"><button class="btn" onclick="window.print()">Print / Save PDF</button><a class="btn primary" href="./index.html">Open product walkthrough</a></div>
   </header>
 
   <section class="summary">
-    <div><strong>Two controlled loops, one immutable evidence trail</strong><p>The interviewer discovers and freezes an eligible belief. The persuader selects only reason-relevant evidence, blocks unsupported claims, and records immediate and seven-day outcomes.</p></div>
+    <div><strong>Discovery may reject the case; persuasion begins only after six gates pass</strong><p>V2 reconstructs one incident, separates outcome beliefs from norms and barriers, and preserves parked cases as research data. The persuader then selects only reason-relevant evidence, blocks unsupported claims, and records immediate and delayed outcomes.</p></div>
     <div class="legend"><span class="chip ai">LLM judgment</span><span class="chip rule">Deterministic rule</span><span class="chip human">Human gate</span><span class="chip data">Stored record</span></div>
   </section>
 
@@ -75,7 +75,7 @@
         <div class="flow">
           <button class="node ai" data-key="extract"><b>Atomic claim extractor</b><span>One checkable proposition per row</span></button><span class="arrow">→</span>
           <button class="node rule gate" data-key="verify"><b>All pass?</b></button><span class="arrow">→</span>
-          <div class="branch"><button class="node ai" data-key="repair"><b>Repair loop</b><span>Remove, qualify, rewrite or refuse</span></button><button class="node human" data-key="approve"><b>Human approval</b><span>V1 release gate</span></button></div><span class="arrow">→</span>
+          <div class="branch"><button class="node ai" data-key="repair"><b>Repair loop</b><span>Remove, qualify, rewrite or refuse</span></button><button class="node human" data-key="approve"><b>Human approval</b><span>V2 release gate</span></button></div><span class="arrow">→</span>
           <button class="node data" data-key="deliver"><b>Immutable delivery</b><span>Store exactly what the person saw</span></button>
         </div>
       </div>
@@ -99,7 +99,7 @@
       <div class="meta"><span>Output</span><div id="output">A verified intervention and auditable measurement record</div></div>
       <div class="meta"><span>Owner</span><div id="owner">LLM judgment, deterministic rules and human approval are kept separate</div></div>
       <div class="risk" id="failure"><strong>Core safety rule:</strong> no supporting passage means no delivered claim.</div>
-      <div class="talk"><div class="eyebrow">What to say</div><p id="talk">“The design contains two controlled loops: discovery and persuasion. Each probabilistic model decision is surrounded by a deterministic record or gate, and V1 keeps a human check immediately before delivery.”</p></div>
+      <div class="talk"><div class="eyebrow">What to say</div><p id="talk">“The design contains two controlled loops: discovery and persuasion. Each probabilistic model decision is surrounded by a deterministic record or gate, and V2 keeps a human check immediately before delivery.”</p></div>
       <div class="hint">Tip: click the highlighted nodes while screen sharing instead of reading every label.</div>
     </aside>
   </div>
@@ -120,7 +120,7 @@
       <div class="decision"><span class="n">1</span><span>Is belief discovery evaluated as part of the product?</span></div>
       <div class="decision"><span class="n">2</span><span>Separate participants or both interventions per participant?</span></div>
       <div class="decision"><span class="n">3</span><span>What establishes a qualifying cost and acceptable evidence?</span></div>
-      <div class="decision"><span class="n">4</span><span>Is a human approval gate acceptable in the final V1?</span></div>
+      <div class="decision"><span class="n">4</span><span>Is a human approval gate acceptable in the final V2?</span></div>
       <div class="decision"><span class="n">5</span><span>What participant count and delayed outcome are expected?</span></div>
     </section>
   </div>
@@ -139,13 +139,13 @@
     fixed:{c:'Deterministic rule',t:'Fixed brief path',p:'Serves the same verified message to every participant regardless of their stated reason.',i:'Frozen belief and baseline score',o:'Identical comparison response',w:'Stored brief',f:'Do not adapt the content after seeing the participant’s reason.',s:'“The fixed brief answers whether a good brochure performs as well as reason-targeted evidence.”'},
     run:{c:'Stored record',t:'Run ledger',p:'Preserves assignment, versions, timestamps and every participant-facing output.',i:'All experiment events',o:'Immutable audit trail',w:'Database and content hashes',f:'Corrections become new records and never overwrite the original delivery.',s:'“This directly fixes the hackathon’s original-delivery evidence gap.”'},
     decompose:{c:'LLM judgment',t:'Reason decomposition',p:'Separates factual subclaims, values, preferences and personal predictions.',i:'Frozen belief and stated reason',o:'Atomic subclaims with type labels',w:'Structured LLM output',f:'Values and preferences are not treated as factual errors; personal predictions remain uncertain.',s:'“The system challenges only the checkable part of the reason.”'},
-    retrieve:{c:'Deterministic rule',t:'Evidence retrieval',p:'Looks up only approved evidence units for the selected domain.',i:'Atomic factual subclaims',o:'Candidate source passages and metadata',w:'Curated store lookup',f:'V1 has no unrestricted live-web factual generation.',s:'“I am bounding V1 to one domain so evidence can be audited before any participant sees it.”'},
+    retrieve:{c:'Deterministic rule',t:'Evidence retrieval',p:'Looks up only approved evidence units for the selected domain.',i:'Atomic factual subclaims',o:'Candidate source passages and metadata',w:'Curated store lookup',f:'V2 has no unrestricted live-web factual generation.',s:'“I am bounding V2 to one domain so evidence can be audited before any participant sees it.”'},
     map:{c:'Stored record',t:'Evidence map',p:'Records whether each subclaim is supported, contradicted, mixed or currently unknown.',i:'Subclaims plus retrieved passages',o:'Claim-to-passage map with caveats',w:'Structured evidence record',f:'Unknown evidence produces uncertainty or refusal, never a confident correction.',s:'“The map preserves what the source supports and what it does not establish.”'},
     draft:{c:'LLM judgment',t:'Persuasion planner',p:'Restates the belief fairly, acknowledges supported concerns, challenges only unsupported steps and proposes a narrower replacement.',i:'Evidence map and claim budget',o:'Draft participant response',w:'Bounded LLM generation',f:'Every factual sentence must cite an evidence-unit ID before verification.',s:'“Persuasion comes from relevance: it addresses the reason the participant is still defending.”'},
     extract:{c:'LLM judgment',t:'Atomic claim extractor',p:'Splits the draft into independently checkable factual propositions.',i:'Draft response',o:'Claim rows with qualifiers',w:'Structured verifier call',f:'Compound sentences are split before a support decision is made.',s:'“We audit the exact words delivered, not a cleaner summary written afterward.”'},
     verify:{c:'Deterministic + verifier',t:'Claim verification gate',p:'Checks source presence, passage support, population, outcome, scope and retained qualifications.',i:'Atomic claims plus evidence map',o:'Pass, qualify, rewrite, remove or refuse',w:'Rules plus verifier LLM',f:'Every factual claim must pass. A valid URL alone is insufficient.',s:'“This is the core truth gate: citation presence is traceability; passage entailment is support.”'},
     repair:{c:'LLM judgment',t:'Repair loop',p:'Uses verifier feedback to narrow, qualify or remove a failed claim.',i:'Failed claim and reason',o:'Revised draft or refusal',w:'Bounded retries',f:'When retries are exhausted, remove the claim or refuse the unsupported direction.',s:'“The system loses density before it sacrifices source support.”'},
-    approve:{c:'Human gate',t:'Human approval',p:'Lets a researcher inspect the delivered sentence beside its exact passage during V1.',i:'All passed claims and final draft',o:'Approved or rejected delivery',w:'Human reviewer',f:'No participant delivery occurs without approval in V1.',s:'“I want Siddhant’s guidance on whether this gate may remain in the final capstone.”'},
+    approve:{c:'Human gate',t:'Human approval',p:'Lets a researcher inspect the delivered sentence beside its exact passage during V2.',i:'All passed claims and final draft',o:'Approved or rejected delivery',w:'Human reviewer',f:'No participant delivery occurs without approval in V2.',s:'“I want Siddhant’s guidance on whether this gate may remain in the final capstone.”'},
     deliver:{c:'Stored record',t:'Immutable delivery',p:'Delivers the approved response and stores the exact participant-facing text.',i:'Approved response',o:'Timestamped delivery record',w:'Application service',f:'Later edits are separate versions and cannot alter the historical run.',s:'“This creates the receipt the hackathon review said was missing.”'},
     immediate:{c:'Stored record',t:'Immediate measurement',p:'Re-asks the score for the exact frozen statement and records the participant’s explanation.',i:'Delivered response',o:'Post-score plus changed/resisted/complicated reaction',w:'Form and database',f:'Do not substitute a new or weaker belief statement.',s:'“The explanation matters because a score drop alone does not show which evidence worked.”'},
     followup:{c:'Deterministic rule',t:'Seven-day follow-up',p:'Schedules the same belief measure after enough time has passed for behavior to occur.',i:'Original run date and frozen statement',o:'Due follow-up task',w:'Scheduler',f:'First interventions must finish early enough to collect genuine day-seven data.',s:'“The delayed measure separates temporary surprise from retained revision.”'},
