@@ -1,0 +1,178 @@
+import "server-only";
+import OpenAI from "openai";
+import { zodTextFormat } from "openai/helpers/zod";
+import { getEnv } from "../env";
+import { discoveryTurnSchema, type DiscoveryTurn, FIELD_NAMES, type FieldName } from "../zod/discovery";
+import { DISCOVERY_SYSTEM_PROMPT, PROMPT_VERSION } from "./prompt.v1";
+
+let openaiClient: OpenAI | null = null;
+function getClient(): OpenAI {
+  if (openaiClient) return openaiClient;
+  openaiClient = new OpenAI({ apiKey: getEnv().OPENAI_API_KEY });
+  return openaiClient;
+}
+
+export interface DiscoveryMessageForModel {
+  id: string;
+  role: "participant" | "assistant";
+  content: string;
+}
+
+export interface RunDiscoveryTurnInput {
+  situationCard: string;
+  goal: string | null;
+  decisionCue: string | null;
+  recentMessages: DiscoveryMessageForModel[];
+  currentFields: Record<FieldName, string | null>;
+  nextMissingFieldHint: FieldName | null;
+  questionsAskedSoFar: number;
+  questionBudget: number;
+}
+
+export interface DiscoveryTurnResult {
+  turn: DiscoveryTurn | null;
+  fallback: boolean;
+  model: string;
+  promptVersion: string;
+  requestId: string | null;
+  latencyMs: number;
+  errorMessage: string | null;
+}
+
+function buildContextBlock(input: RunDiscoveryTurnInput): string {
+  const participantMessageIds = input.recentMessages.filter((m) => m.role === "participant").map((m) => m.id);
+  return JSON.stringify(
+    {
+      situation_card: input.situationCard,
+      goal: input.goal,
+      decision_cue: input.decisionCue,
+      current_fields: input.currentFields,
+      next_missing_field_hint: input.nextMissingFieldHint,
+      questions_asked_so_far: input.questionsAskedSoFar,
+      question_budget: input.questionBudget,
+      valid_participant_message_ids: participantMessageIds,
+      recent_turns: input.recentMessages.map((m) => ({ id: m.id, role: m.role, content: m.content })),
+    },
+    null,
+    2,
+  );
+}
+
+/** Strips any field whose cited message IDs aren't real participant messages in this turn's input. */
+function enforceProvenance(turn: DiscoveryTurn, validParticipantMessageIds: Set<string>): DiscoveryTurn {
+  const extraction = { ...turn.extraction };
+  const fieldEvidence = { ...turn.field_evidence };
+  for (const field of FIELD_NAMES) {
+    const citations = fieldEvidence[field] ?? [];
+    const allValid = citations.length > 0 && citations.every((id) => validParticipantMessageIds.has(id));
+    if (extraction[field] !== null && !allValid) {
+      extraction[field] = null;
+      fieldEvidence[field] = [];
+    }
+  }
+  return { ...turn, extraction, field_evidence: fieldEvidence };
+}
+
+function neutralFallbackTurn(nextMissingFieldHint: FieldName | null, budgetExhausted: boolean): DiscoveryTurn {
+  const templates: Record<FieldName, string> = {
+    chosen_action: "What did you actually decide to do?",
+    rejected_alternative: "What was the other option you did not choose?",
+    expected_outcome: "What did you expect would happen with the option you chose?",
+    origin_of_expectation: "What made you expect that — something you read, heard, or experienced?",
+    actual_consequence: "Has anything actually happened yet as a result of that choice?",
+    consequence_evidence: "What tells you that happened — a bill, a result, or something you noticed?",
+  };
+  return {
+    next_question: budgetExhausted ? null : nextMissingFieldHint ? templates[nextMissingFieldHint] : "Can you tell me a bit more about what happened?",
+    extraction: {
+      chosen_action: null,
+      rejected_alternative: null,
+      expected_outcome: null,
+      origin_of_expectation: null,
+      actual_consequence: null,
+      consequence_evidence: null,
+    },
+    field_evidence: {
+      chosen_action: [],
+      rejected_alternative: [],
+      expected_outcome: [],
+      origin_of_expectation: [],
+      actual_consequence: [],
+      consequence_evidence: [],
+    },
+    next_missing_field: nextMissingFieldHint,
+    candidate_driver: "unclear",
+    needs_participant_confirmation: false,
+    should_stop: budgetExhausted,
+    stop_reason: budgetExhausted ? "question_budget_exhausted" : null,
+    safety: "in_scope",
+  };
+}
+
+export async function runDiscoveryTurn(input: RunDiscoveryTurnInput): Promise<DiscoveryTurnResult> {
+  const env = getEnv();
+  const model = env.OPENAI_TEXT_MODEL;
+  const validParticipantMessageIds = new Set(input.recentMessages.filter((m) => m.role === "participant").map((m) => m.id));
+  const budgetExhausted = input.questionsAskedSoFar >= input.questionBudget;
+
+  if (budgetExhausted) {
+    return {
+      turn: neutralFallbackTurn(input.nextMissingFieldHint, true),
+      fallback: true,
+      model,
+      promptVersion: PROMPT_VERSION,
+      requestId: null,
+      latencyMs: 0,
+      errorMessage: null,
+    };
+  }
+
+  const start = Date.now();
+  let lastError: string | null = null;
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const response = await getClient().responses.parse({
+        model,
+        store: false,
+        input: [
+          { role: "system", content: DISCOVERY_SYSTEM_PROMPT },
+          { role: "user", content: buildContextBlock(input) },
+        ],
+        text: { format: zodTextFormat(discoveryTurnSchema, "discovery_turn") },
+      });
+
+      const parsed = response.output_parsed;
+      if (!parsed) {
+        lastError = "Model returned no parsed output (refusal or incomplete response).";
+        continue;
+      }
+
+      const safe = enforceProvenance(parsed, validParticipantMessageIds);
+      return {
+        turn: safe,
+        fallback: false,
+        model,
+        promptVersion: PROMPT_VERSION,
+        requestId: response.id ?? null,
+        latencyMs: Date.now() - start,
+        errorMessage: null,
+      };
+    } catch (err) {
+      lastError = err instanceof Error ? err.message : String(err);
+    }
+  }
+
+  // Exhausted one bounded repair attempt; fall back to a logged neutral
+  // template question. This is explicitly labelled and never presented as
+  // a successful model turn.
+  return {
+    turn: neutralFallbackTurn(input.nextMissingFieldHint, false),
+    fallback: true,
+    model,
+    promptVersion: PROMPT_VERSION,
+    requestId: null,
+    latencyMs: Date.now() - start,
+    errorMessage: lastError,
+  };
+}
