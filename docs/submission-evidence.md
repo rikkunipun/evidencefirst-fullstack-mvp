@@ -17,7 +17,7 @@ Branch `fullstack-mvp`, worktree of reference commit `f830f11c1b9e870c8edd18fbb9
 - Real researcher login, draft generation, approval, immutable delivery commit.
 - Real reversal QA: an overbroad claim refused with zero factual claims; an exact approved claim confirmed as supported (so the refusal path isn't a blanket "always refuse"); a verbatim claim from a *different* enabled pack still refused (true membership check, not keyword match).
 - Real post-measurement, follow-up creation, "not yet due" enforcement, receipt generation, and refresh/resume — all byte-exact against what was actually persisted.
-- A real Vercel build succeeded with the actual production dependency set (see `docs/deployment.md`) — the deployment itself is not yet public (see Limitations).
+- **Public production deployment: https://evidencefirst-fullstack-mvp.vercel.app** — real, verified from a clean curl/Playwright session with no prior cookies: landing/participate pages load, `/admin` correctly redirects unauthenticated, a real session + real OpenAI discovery turn works, researcher login/draft/approve/reversal all verified via Playwright against the live URL, zero secret leakage across every HTML response and JS chunk. Two real bugs were caught and fixed during this verification (see `docs/deployment.md`): a formatting issue in `.env.local` that would have shipped a broken OpenAI auth header, and a missing production env var that caused `/admin` to 500 instead of redirect.
 
 **Explicitly NOT real:**
 - No real participants have been recruited or interviewed by me. `docs/pilot-script.md` is prepared for the owner to run three real 15–20 minute sessions (Sai Teja, Akhilesh, Anand) separately.
@@ -50,8 +50,8 @@ Not a post-hoc checker — structural. `lib/delivery-template.ts` composes deliv
 | Unsupported-domain case cannot reach persuasion | ✅ tested deterministically (`checkable` gate fails for topics with no enabled pack) |
 | Reversal run refuses, zero delivered claims | ✅ tested live |
 | Researcher sees complete trace, exports it | ✅ `/admin/sessions/[id]` 11-section trace; `/admin/export` csv/json |
-| OpenAI key absent from client bundles/logs | ✅ server-only everywhere (`server-only` package enforced); not yet re-verified against an actual deployed bundle (blocked on public deployment) |
-| Production works from an unrelated device/account | ⚠️ **blocked** — see `docs/deployment.md`; the Vercel build itself succeeded with real env vars, but the resulting URL is behind Vercel's own auth wall until the project is claimed into a real account (needs a Vercel token or interactive login from the owner) |
+| OpenAI key absent from client bundles/logs | ✅ server-only everywhere (`server-only` package enforced); re-verified against the actual deployed production bundle — grepped every loaded JS chunk and HTML response, zero matches |
+| Production works from an unrelated device/account | ✅ **deployed and verified**: https://evidencefirst-fullstack-mvp.vercel.app — see `docs/deployment.md` for exactly what was checked |
 | Evidence library editing actually gates delivery | ⚠️ **documented simplification** — `/admin/evidence` reads/displays the DB rows; delivery composition reads the in-code constants (identical content, same source). Toggling `enabled` in the DB does not yet change what's delivered. |
 | Reason-matched (non-order) personalization | ❌ explicitly out of scope per brief — only `order_personalization_v1` implemented |
 | Three real pilot interviews | ❌ not run by me — `docs/pilot-script.md` prepared for the owner |

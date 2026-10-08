@@ -79,12 +79,28 @@ Admin UI added: `/admin/sessions/[id]` (full 11-section vertical trace + draft/a
 
 61 Vitest + 13 deterministic Playwright tests passing (plus 1 live-model Playwright test that is inherently non-deterministic by design — see slice 5). `tsc --noEmit` and `next build` clean (18 routes).
 
-## ⏳ Next (slice 5)
+## ✅ Slice 5 complete — deployed, verified, feature-frozen
 
-- a11y/mobile pass, production build verification, deploy, pilot script, submission evidence.
+**Public production URL: https://evidencefirst-fullstack-mvp.vercel.app** (project `rikkunipuns-projects/evidencefirst-fullstack-mvp`). You ran `vercel login` yourself; I ran `vercel link` + pushed all 9 env vars to Production (values piped via stdin, never printed or logged) + `vercel --prod`.
+
+**Verification caught and fixed two real bugs** (not polish — found while checking the deployment actually works):
+1. `.env.local` had a leading space on `NEXT_PUBLIC_SUPABASE_URL` and a trailing space on `OPENAI_API_KEY`. Node's `dotenv` silently tolerated both locally (which is why nothing broke in 4 slices of local testing), but Vercel's env store flagged the trailing-space one explicitly, and it would have shipped a broken `Authorization: Bearer ...<space>` header. Fixed at the source and re-pushed.
+2. `NEXT_PUBLIC_APP_URL` was deliberately deferred until the real domain was known, but I deployed once before adding it — `/admin` and `/api/sessions` both 500'd (unhandled throw in `getEnv()`) instead of behaving correctly. Added the var, redeployed, re-verified: `/admin` → 307 to `/admin/login`, `/api/sessions` → 200 with a real DB row and a `Secure` cookie.
+
+**Also added and verified live:**
+- `tests/e2e/mobile-layout.spec.ts` (6 tests): no horizontal overflow at 360px/390px, simulated 200% zoom, reduced-motion respected.
+- `lib/ai/discovery-pure.ts`: extracted `enforceProvenance`/`neutralFallbackTurn` out from behind `discovery.ts`'s `server-only` import so they're unit-testable; 8 new tests covering the brief's explicit "invalid provenance" requirement (fabricated/partial message-ID citations get nulled; the neutral fallback never fabricates an extraction).
+- Ran all 13 deterministic Playwright tests against **both** local dev and the live production URL — 13/13 pass on both.
+- Scanned every JS chunk and HTML response actually served by production for the four secret patterns (`sk-proj-`, `sb_secret_`, and the two secret env var names) — zero matches.
+- Database left clean: 0 leftover test participants/sessions, 15 seeded evidence units, 3 canonical reversal-QA receipts (trimmed duplicate automated-test runs).
+
+**Final count: 61 Vitest + 13 deterministic Playwright passing (local and production) + 1 inherently-flaky live-model Playwright test documented separately. `tsc --noEmit` and `next build` clean, 29 routes.**
+
+Per your instruction: feature freeze from here — only bugs found during verification get fixed, no further additions.
 
 ## Known risks carried from the brief
 
-- Deployment requires the owner's interactive `vercel login`; I cannot complete that OAuth flow myself.
-- Human pilot interviews (Sai Teja, Akhilesh, Anand) must be conducted by the owner.
+- Human pilot interviews (Sai Teja, Akhilesh, Anand) must be conducted by the owner — `docs/pilot-script.md` is ready.
+- `/admin/evidence` is read-only; toggling a DB row's `enabled` flag does not yet gate delivery composition (documented simplification, delivery reads in-code constants with identical content).
+- No separate production Supabase project — same database as local dev throughout this build window.
 - 24-hour window: if time runs out, consent/gating/evidence-integrity code ships before export/a11y polish.

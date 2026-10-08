@@ -78,7 +78,8 @@ test("ack, post-measurement, follow-up, receipt, and refresh/resume all work fro
     content_hash: "testhash",
   });
 
-  await page.context().addCookies([{ name: "ef_session", value: signSessionCookie(sessionId), domain: "localhost", path: "/" }]);
+  const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000";
+  await page.context().addCookies([{ name: "ef_session", value: signSessionCookie(sessionId), url: baseURL }]);
 
   try {
     // Resume: GET works with the real cookie before any action.
