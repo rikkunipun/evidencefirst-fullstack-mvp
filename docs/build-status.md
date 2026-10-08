@@ -48,11 +48,26 @@ Added `assign_condition` Postgres function (`0007`/`0008` migrations) for atomic
 
 **Known quality gap (not blocking):** the auto-generated read-back sentence was initially grammatically awkward because the model extracted full sentences instead of short phrases for chosen_action/rejected_alternative/expected_outcome. Patched the prompt to require short noun phrases for those three fields specifically — not yet re-verified live (next session should confirm).
 
-## ⏳ Next (slices 3–5)
+## ✅ Slice 3 complete (server assignment already done in slice 2; researcher review, constrained delivery, immutable receipt, reversal QA)
 
-- Researcher draft generation, approval, constrained delivery composition, immutable delivery receipt, reversal QA page (slice 3).
+**First real Playwright e2e test, run against the live OpenAI API and live Supabase project, green end to end** (`tests/e2e/eligible-activity-flow.spec.ts`, ~70s): consent → 5 real scripted discovery turns → confirmation → all 6 eligibility gates pass → baseline freeze → crux (real classification call → `current_claim`) → pre-evidence + idempotent assignment → **real researcher login through the actual `/admin/login` UI** (throwaway rotated password, never hardcoded) → `POST /api/admin/sessions/:id/draft` → `POST /api/admin/sessions/:id/approve` → final state `delivered` with exactly 5 claim IDs and exact text. Cleans up every row it created, pass or fail.
+
+Also added `tests/e2e/reversal-qa.spec.ts` (3 tests, all passing against the real DB): overbroad unsupported claim → refused, zero delivered factual claims; an actually-approved exact claim → correctly reports support (so refusal isn't just "always say no"); verbatim text from a *different* enabled pack → still refused (membership, not keyword matching). These 3 real reversal receipts are intentionally left in `reversal_runs` as genuine first-class reversal-QA evidence per the brief, not deleted like other test fixtures.
+
+Caught and fixed a real bug via this live testing: `POST /api/admin/sessions/:id/draft` was returning raw snake_case DB columns (`claim_order`, `content_hash`, …) instead of the camelCase shape the rest of the API uses — would have silently broken the admin UI's "generate draft" flow. Fixed to return `{ claimOrder, renderedText, renderedHtml, wordCount, contentHash }`.
+
+Delivery composition is **constrained by construction**: `lib/delivery-template.ts` only ever emits approved claim IDs' exact text, the pack's exact boundary text, and a fixed connective template with the participant's reason HTML-escaped — there is no model call and no free-form text path in the delivery pipeline, so "reject unmapped or broader wording" is structurally guaranteed rather than caught by a verifier pass. Immutable `deliveries`/`approvals`/`draft_revisions` rows (DB-trigger blocked from UPDATE); approval checks the draft's `content_hash` and rejects a stale approval.
+
+Admin UI added: `/admin/sessions/[id]` (full 11-section vertical trace + draft/approve controls), `/admin/reversal` (form + receipt), `/admin/evidence` (read-only list — see documented limitation below).
+
+**Documented limitation:** delivery composition reads the in-code `EVIDENCE_PACKS` constants (identical content to the DB, seeded from the same source), not the DB rows live. Toggling `enabled` on an `/admin/evidence` row does not yet gate delivery. Given the 24h window this was deferred rather than built half-correctly; `/admin/evidence` is explicit about this in its own copy.
+
+53 Vitest unit tests + 4 Playwright e2e tests, all passing. `tsc --noEmit` and `next build` both clean (10 routes now).
+
+## ⏳ Next (slices 4–5)
+
 - Post-measurement, follow-up link/page, de-identified export (slice 4).
-- Playwright e2e, a11y/mobile pass, deploy, pilot script, submission evidence (slice 5).
+- Parked/refusal Playwright coverage, refresh/resume Playwright coverage, a11y/mobile pass, deploy, pilot script, submission evidence (slice 5).
 
 ## Known risks carried from the brief
 
