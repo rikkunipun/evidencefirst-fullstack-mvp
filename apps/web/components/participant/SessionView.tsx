@@ -10,6 +10,9 @@ import { CruxView } from "./CruxView";
 import { PreEvidenceView } from "./PreEvidenceView";
 import { WaitingView } from "./WaitingView";
 import { ParkedView } from "./ParkedView";
+import { DeliveryView } from "./DeliveryView";
+import { PostMeasurementView } from "./PostMeasurementView";
+import { ReceiptView } from "./ReceiptView";
 import { apiGet, apiPost } from "@/lib/api-client";
 import type { SessionSnapshot } from "@/lib/types/session";
 
@@ -18,6 +21,7 @@ const PROCEEDABLE_CLASSIFICATIONS = new Set(["current_claim", "near_term_test"])
 export function SessionView({ sessionId, initialSnapshot }: { sessionId: string; initialSnapshot: SessionSnapshot }) {
   const [snapshot, setSnapshot] = useState(initialSnapshot);
   const [withdrawing, setWithdrawing] = useState(false);
+  const [followupUrl, setFollowupUrl] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     const latest = await apiGet<SessionSnapshot>(`/api/sessions/${sessionId}`);
@@ -59,6 +63,23 @@ export function SessionView({ sessionId, initialSnapshot }: { sessionId: string;
       case "pending_review":
       case "approved":
         return <WaitingView />;
+      case "delivered":
+        return <DeliveryView sessionId={sessionId} snapshot={snapshot} onAdvance={refresh} />;
+      case "ack_recorded":
+        return (
+          <PostMeasurementView
+            sessionId={sessionId}
+            beliefWording={beliefWording}
+            onAdvance={(url) => {
+              setFollowupUrl(url);
+              void refresh();
+            }}
+          />
+        );
+      case "measured":
+      case "followup_due":
+      case "complete":
+        return <ReceiptView sessionId={sessionId} snapshot={snapshot} followupUrl={followupUrl} />;
       case "parked":
       case "refused":
         return <ParkedView snapshot={snapshot} />;

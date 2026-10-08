@@ -38,6 +38,7 @@ async function cleanupSession(sessionId: string) {
   const supabase = createClient(url, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } });
   const { data: s } = await supabase.from("sessions").select("participant_id").eq("id", sessionId).maybeSingle();
   const tables = [
+    "followups",
     "deliveries",
     "approvals",
     "draft_revisions",
@@ -167,6 +168,37 @@ test("eligible activity case reaches confirmed delivery through real discovery, 
     expect(finalBody.session.state).toBe("delivered");
     expect(finalBody.delivery.claimIds.length).toBe(5);
     expect(finalBody.delivery.exactText).toContain(draft.body.draft.renderedText.split("\n")[0]);
+
+    // 11. Ack is required before a post-score can be submitted (participant-side, own capability cookie).
+    const ack = await postJson(request, `/api/sessions/${sessionId}/ack`, {});
+    expect(ack.status).toBe(200);
+
+    // 12. Post-evidence score creates the follow-up and returns its one-time link.
+    const post = await postJson(request, `/api/sessions/${sessionId}/measurements`, { score: 6, explanation: "The source/strengthening distinction changed my view.", reportedBehavior: "I'll plan a walk or bodyweight routine for my next trip." });
+    expect(post.status).toBe(200);
+    expect(post.body.followupUrl).toMatch(/\/follow-up\//);
+    const followupToken = post.body.followupUrl.split("/follow-up/")[1];
+
+    // 13. Follow-up correctly reports "not yet due" seven days early, and refuses early submission.
+    const followupGet = await request.get(`/api/follow-up/${followupToken}`);
+    expect(followupGet.status()).toBe(200);
+    const followupBody = await followupGet.json();
+    expect(followupBody.isDue).toBe(false);
+    const earlySubmit = await postJson(request, `/api/follow-up/${followupToken}`, { score: 5, reportedBehavior: "test" });
+    expect(earlySubmit.status).toBe(409);
+
+    // 14. Receipt download includes the frozen belief and both real scores.
+    const receiptRes = await request.get(`/api/sessions/${sessionId}/receipt`);
+    const receipt = await receiptRes.json();
+    expect(receipt.scores.baseline).toBe(9);
+    expect(receipt.scores.postEvidence).toBe(6);
+    expect(receipt.frozenBelief).toBe(turn.body.generatedWording);
+
+    // 15. Refresh/resume: a fresh GET with the same cookie reproduces the exact same state.
+    const resumed = await request.get(`/api/sessions/${sessionId}`);
+    const resumedBody = await resumed.json();
+    expect(resumedBody.session.state).toBe("followup_due");
+    expect(resumedBody.delivery.exactText).toBe(finalBody.delivery.exactText);
   } finally {
     await cleanupSession(sessionId);
   }

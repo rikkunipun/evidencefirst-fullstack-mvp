@@ -64,10 +64,24 @@ Admin UI added: `/admin/sessions/[id]` (full 11-section vertical trace + draft/a
 
 53 Vitest unit tests + 4 Playwright e2e tests, all passing. `tsc --noEmit` and `next build` both clean (10 routes now).
 
-## ⏳ Next (slices 4–5)
+## ✅ Slice 4 complete (post-measurement, refresh/resume, parked/refusal, follow-up, export)
 
-- Post-measurement, follow-up link/page, de-identified export (slice 4).
-- Parked/refusal Playwright coverage, refresh/resume Playwright coverage, a11y/mobile pass, deploy, pilot script, submission evidence (slice 5).
+- `POST /api/sessions/:id/ack`, `POST /api/sessions/:id/measurements` (post-evidence; rejects submission before ack), `GET/POST /api/follow-up/[token]` (honest "not yet due" before due_at, idempotent single collection, due_at = delivered_at + exactly 7 days), `GET /api/sessions/:id/receipt`, `GET /api/admin/export?format=csv|json` (de-identified by participant code, formula-injection-safe CSV cells).
+- Fixed a real DB bug caught by this work before it ever ran: the blanket immutability trigger on `deliveries` blocked the legitimate one-time `displayed_ack_at` write. Replaced it with a trigger (migration `0009`) that allows exactly that one field, exactly once, and still blocks every other mutation (including re-acking and any change to exact delivered content).
+- Participant UI: `DeliveryView`, `PostMeasurementView`, `ReceiptView`, `/follow-up/[token]` page — all wired into `SessionView` by server state only.
+
+**9 new Playwright tests added, split deliberately by determinism:**
+- `tests/e2e/post-delivery-flow.spec.ts` (2 tests, DB-seeded to `delivered`, no live model calls, ~8s total): ack→post-score→follow-up-not-due→receipt→refresh/resume all verified byte-exact; confirms an unauthenticated request with just the session ID gets 404.
+- `tests/e2e/parked-flow.spec.ts` (2 tests, deterministic): no-actual-cost case parks via the real `consequential` gate; a topic with no enabled pack parks via the real `checkable` gate (this is the "unsupported-domain case cannot reach persuasion" acceptance criterion) — both assert `baseline`/`assignment`/`delivery` stay null.
+- Extended `eligible-activity-flow.spec.ts` with ack→post-score→follow-up→receipt→resume steps on top of the full live-model run.
+
+**Honest note on live-model e2e flakiness:** re-running the full live discovery conversation a second time, the model legitimately parked the case instead of reaching a candidate (different phrasing led it to judge the story as not-yet-stable) — that's the real non-deterministic nature of an LLM-driven interview, not a bug, and is exactly why the deterministic tests above exist as the repeatable signal while the live run is the supplementary one-time check the brief asks for. Separately hit real Supabase-Auth-login flakiness mid-session that turned out to be a stale Turbopack dev-server state after the `middleware.ts→proxy.ts` rename — a `next dev` restart fixed it immediately and reproducibly; noted here since it could confuse a future session.
+
+61 Vitest + 9 Playwright tests passing (excluding the known-flaky live-discovery continuation, which is inherently non-deterministic by design). `tsc --noEmit` and `next build` clean (18 routes).
+
+## ⏳ Next (slice 5)
+
+- a11y/mobile pass, production build verification, deploy, pilot script, submission evidence.
 
 ## Known risks carried from the brief
 
