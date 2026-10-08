@@ -30,7 +30,8 @@ export interface RunDiscoveryTurnInput {
 }
 
 export interface DiscoveryTurnResult {
-  turn: DiscoveryTurn | null;
+  /** Always populated — either a real parsed turn or a labelled neutral fallback. */
+  turn: DiscoveryTurn;
   fallback: boolean;
   model: string;
   promptVersion: string;

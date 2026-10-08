@@ -28,18 +28,18 @@ export const withdrawSchema = z.object({
 });
 
 export const postMessageSchema = z.object({
-  content: z.string().trim().min(1).max(2000),
+  // null only on the very first call for a session, to kick off discovery
+  // before the participant has answered anything.
+  content: z.string().trim().min(1).max(2000).nullable(),
   inputMode: z.enum(["text", "voice"]).default("text"),
 });
 
-export const confirmBeliefSchema = z.object({
-  confirmedWording: z.string().trim().min(1).max(500),
+export const eligibilityAnswersSchema = z.object({
   stillHoldsBelief: z.boolean(),
   scopeAndTime: z.string().trim().min(1).max(300),
   materiallyAffectedDecision: z.boolean(),
   consequenceOccurred: z.boolean(),
   consequenceEvidence: z.string().trim().max(500).optional().nullable(),
-  withinSafeScope: z.boolean().optional(), // server may also derive this from topic
 });
 
 export const baselineSchema = z.object({
@@ -64,18 +64,7 @@ export const cruxHypotheticalSchema = z.object({
   hypotheticalScore: z.number().int().min(0).max(10),
 });
 
-export const cruxClassifySchema = z.object({
-  action: z.literal("classify"),
-  stage: z.literal("classify"),
-  classification: z.enum(["current_claim", "near_term_test", "distant_forecast", "value_identity", "unclear"]),
-});
-
-export const cruxRequestSchema = z.discriminatedUnion("action", [
-  cruxReasonSchema,
-  cruxConfirmSchema,
-  cruxHypotheticalSchema,
-  cruxClassifySchema,
-]);
+export const cruxRequestSchema = z.discriminatedUnion("action", [cruxReasonSchema, cruxConfirmSchema, cruxHypotheticalSchema]);
 
 export const measurementSchema = z.object({
   phase: z.enum(["pre_evidence", "post_evidence"]),

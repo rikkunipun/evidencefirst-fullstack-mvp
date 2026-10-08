@@ -26,12 +26,33 @@ Smoke-tested live against the real Supabase project and `next dev` (not just typ
 
 Landing (`/`), consent+context flow (`/participate`), admin login/dashboard shell all render and round-trip correctly.
 
-## ⏳ In progress / next
+## ✅ Slice 2 complete (real model-backed discovery → confirmation → gates → freeze → crux → pre-evidence → assignment)
 
-- Evidence-unit seed script written (`db/seed.ts`) but **cannot run until the service-role key is fixed** (currently fails with "permission denied for table evidence_units", confirming the key, not the schema, is wrong).
-- Participant/researcher API routes and pages (slices 2–4).
-- Vitest unit tests for the pure modules above (don't need DB; will run regardless of the credential blocker).
-- Playwright e2e, production build, deploy, pilot script, submission evidence (slice 5).
+Ran a **full live end-to-end session** against the real OpenAI API and real Supabase project (not mocked), then deleted the smoke-test rows:
+
+- `POST /api/sessions/:id/messages` — real `responses.parse` + `zodTextFormat` discovery turns, one question at a time, 25-word cap, provenance-checked extraction, stopped correctly at `candidate_ready` after 5 questions (budget is 8) and generated a read-back from real extracted fields.
+- `POST /api/sessions/:id/confirm` — participant-edited wording frozen as `confirmed_wording`.
+- `POST /api/sessions/:id/eligibility` — all six gates evaluated deterministically from real answers + real pack lookup + real model safety flag; all passed in this run, each with a correct plain-language reason.
+- `POST /api/sessions/:id/baseline` — froze belief wording, scope/time, consequence, baseline score (9); immutable (no UPDATE trigger).
+- `POST /api/sessions/:id/crux` — reason → reflect → confirm → hypothetical score (fell below baseline) → real `responses.parse` classification call returned `current_claim`.
+- `POST /api/sessions/:id/pre-evidence` — recorded the pre-evidence score, then called the `assign_condition` Postgres RPC: real 1:1 permuted-block assignment (`fixed`), verified idempotent (second call correctly 409'd with `invalid_state: assigned`, not a re-assignment).
+- Full snapshot (`GET /api/sessions/:id`) matched every persisted field exactly.
+
+Participant UI: `/s/[id]` now renders every stage through "assigned" (discovery chat, confirmation read-back, plain eligibility form, baseline/pre-evidence score pickers, crux loop, waiting screen, parked screen) driven entirely by server state — no client-side state guessing.
+
+Added `assign_condition` Postgres function (`0007`/`0008` migrations) for atomic, lock-based, idempotent assignment — required a fix for a column-name ambiguity bug caught by live testing, not just review.
+
+**48 Vitest unit tests, all passing**, covering: all 6 eligibility gates (pass/fail/unknown, including "unknown never passes"), state-machine legal/illegal transitions + terminal-state rules, crux 2-pass-cap decision logic, permuted-block assignment (1:1 balance, determinism, exhaustion), evidence pack invariants (enabled-topic boundaries, equal claim/word budgets, exact-match reversal lookup, immutability), follow-up due-date math, and extraction field-merge semantics.
+
+`tsc --noEmit` and `next build` both clean.
+
+**Known quality gap (not blocking):** the auto-generated read-back sentence was initially grammatically awkward because the model extracted full sentences instead of short phrases for chosen_action/rejected_alternative/expected_outcome. Patched the prompt to require short noun phrases for those three fields specifically — not yet re-verified live (next session should confirm).
+
+## ⏳ Next (slices 3–5)
+
+- Researcher draft generation, approval, constrained delivery composition, immutable delivery receipt, reversal QA page (slice 3).
+- Post-measurement, follow-up link/page, de-identified export (slice 4).
+- Playwright e2e, a11y/mobile pass, deploy, pilot script, submission evidence (slice 5).
 
 ## Known risks carried from the brief
 

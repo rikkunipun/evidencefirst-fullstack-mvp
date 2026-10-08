@@ -1,58 +1,22 @@
 import "server-only";
 import { getServiceClient } from "./supabase/service-client";
+import type { SessionSnapshot } from "./types/session";
 import type { SessionState } from "./state-machine";
+
+export type { SessionSnapshot };
 
 /**
  * Everything needed to render the participant's current step, or to drive
  * server-side validation before a mutation. One shared builder so the UI
  * and every route agree on exactly what the database says.
  */
-export interface SessionSnapshot {
-  session: {
-    id: string;
-    state: SessionState;
-    revision: number;
-    packTopic: string | null;
-    createdAt: string;
-    withdrawnAt: string | null;
-  };
-  context: { situationCard: string; goal: string | null; decisionCue: string | null; freeText: string | null } | null;
-  messages: { id: string; turnNumber: number; role: string; content: string; createdAt: string }[];
-  latestExtraction: {
-    fields: Record<string, string | null>;
-    candidateDriver: string;
-    shouldStop: boolean;
-    stopReason: string | null;
-  } | null;
-  questionsAsked: number;
-  beliefConfirmation: { id: string; revision: number; generatedWording: string; confirmedWording: string | null; confirmedAt: string | null } | null;
-  eligibility: {
-    current: string;
-    specific: string;
-    causal: string;
-    consequential: string;
-    checkable: string;
-    safe: string;
-    disposition: string;
-    reasons: Record<string, string>;
-  } | null;
-  baseline: { beliefWording: string; scopeAndTime: string; baselineScore: number; frozenAt: string } | null;
-  cruxPasses: { passNumber: number; statedReason: string; confirmedReason: string | null; hypotheticalScore: number | null }[];
-  cruxClassification: string | null;
-  measurements: { phase: string; score: number; explanation: string | null; recordedAt: string }[];
-  assignment: { condition: "fixed" | "personalized"; packId: string; packVersion: string } | null;
-  draft: { id: string; claimOrder: string[]; renderedText: string; wordCount: number; contentHash: string } | null;
-  approval: { disposition: string; approvedAt: string } | null;
-  delivery: { exactText: string; claimIds: string[]; deliveredAt: string; displayedAckAt: string | null } | null;
-  followup: { dueAt: string; collectedAt: string | null } | null;
-}
 
 export async function loadSessionSnapshot(sessionId: string): Promise<SessionSnapshot | null> {
   const supabase = getServiceClient();
 
   const { data: session } = await supabase
     .from("sessions")
-    .select("id, state, revision, pack_topic, created_at, withdrawn_at")
+    .select("id, state, revision, pack_topic, created_at, withdrawn_at, park_reason")
     .eq("id", sessionId)
     .maybeSingle();
   if (!session) return null;
@@ -93,6 +57,7 @@ export async function loadSessionSnapshot(sessionId: string): Promise<SessionSna
       packTopic: session.pack_topic,
       createdAt: session.created_at,
       withdrawnAt: session.withdrawn_at,
+      parkReason: session.park_reason,
     },
     context: context
       ? { situationCard: context.situation_card, goal: context.goal, decisionCue: context.decision_cue, freeText: context.free_text }

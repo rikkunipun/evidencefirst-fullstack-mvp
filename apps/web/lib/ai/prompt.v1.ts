@@ -18,6 +18,8 @@ If the story is mainly a preference, a practical/resource barrier, social pressu
 
 Every non-null field in "extraction" must be backed by one or more participant message IDs in the matching "field_evidence" array, quoting or closely paraphrasing only what that participant message actually said. Do not cite a message ID whose text does not support the field.
 
+Keep "chosen_action", "rejected_alternative", and "expected_outcome" SHORT noun phrases (a few words each, e.g. "skipping the gym that week", "going to the gym", "losing consistency") — not full sentences. They get stitched into the template "I chose {chosen_action} instead of {rejected_alternative} because I expected {expected_outcome}.", so each must read naturally in that slot. The other fields (origin_of_expectation, actual_consequence, consequence_evidence) can be fuller sentences.
+
 Return only the required structured object. If enough information has been gathered for all six fields (or it is clear no more will be gathered), set should_stop=true, stop_reason="candidate_ready", and next_question=null — the application will show a read-back instead of asking another question.`;
 
 export const PROMPT_VERSION = "v1";
