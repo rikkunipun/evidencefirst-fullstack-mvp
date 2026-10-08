@@ -26,7 +26,7 @@ Branch `fullstack-mvp`, worktree of reference commit `f830f11c1b9e870c8edd18fbb9
 
 ## Test evidence
 
-- 53 Vitest unit tests across 8 files (eligibility gates incl. every fail/unknown case, state-machine transitions incl. terminal-state rejection, crux two-pass cap, permuted-block assignment balance/determinism/exhaustion, evidence pack invariants incl. exact-match reversal lookup and cross-pack rejection, follow-up due-date math, extraction field-merge semantics, delivery-template word-budget equality and content-hash determinism).
+- 61 Vitest unit tests across 9 files (eligibility gates incl. every fail/unknown case, state-machine transitions incl. terminal-state rejection, crux two-pass cap, permuted-block assignment balance/determinism/exhaustion, evidence pack invariants incl. exact-match reversal lookup and cross-pack rejection, follow-up due-date math, extraction field-merge semantics, delivery-template word-budget equality and content-hash determinism, discovery provenance enforcement incl. fabricated-citation rejection).
 - Playwright e2e, split by determinism:
   - `eligible-activity-flow.spec.ts` — live OpenAI + live Supabase, full discovery→delivery→measurement→follow-up→receipt→resume. Non-deterministic by nature (a real model is making real judgment calls); the one documented full pass is the "at least one live-model check" the brief requires.
   - `post-delivery-flow.spec.ts`, `parked-flow.spec.ts`, `reversal-qa.spec.ts`, `mobile-layout.spec.ts` — 13 deterministic tests, DB-seeded or pure-logic, repeatable on every run (all 13 passing). These are the primary signal.

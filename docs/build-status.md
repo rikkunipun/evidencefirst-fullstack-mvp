@@ -62,7 +62,7 @@ Admin UI added: `/admin/sessions/[id]` (full 11-section vertical trace + draft/a
 
 **Documented limitation:** delivery composition reads the in-code `EVIDENCE_PACKS` constants (identical content to the DB, seeded from the same source), not the DB rows live. Toggling `enabled` on an `/admin/evidence` row does not yet gate delivery. Given the 24h window this was deferred rather than built half-correctly; `/admin/evidence` is explicit about this in its own copy.
 
-53 Vitest unit tests + 4 Playwright e2e tests, all passing. `tsc --noEmit` and `next build` both clean (10 routes now).
+61 Vitest unit tests + 4 Playwright e2e tests, all passing. `tsc --noEmit` and `next build` both clean (10 routes now).
 
 ## ✅ Slice 4 complete (post-measurement, refresh/resume, parked/refusal, follow-up, export)
 
@@ -77,7 +77,7 @@ Admin UI added: `/admin/sessions/[id]` (full 11-section vertical trace + draft/a
 
 **Honest note on live-model e2e flakiness:** re-running the full live discovery conversation a second time, the model legitimately parked the case instead of reaching a candidate (different phrasing led it to judge the story as not-yet-stable) — that's the real non-deterministic nature of an LLM-driven interview, not a bug, and is exactly why the deterministic tests above exist as the repeatable signal while the live run is the supplementary one-time check the brief asks for. Separately hit real Supabase-Auth-login flakiness mid-session that turned out to be a stale Turbopack dev-server state after the `middleware.ts→proxy.ts` rename — a `next dev` restart fixed it immediately and reproducibly; noted here since it could confuse a future session.
 
-53 Vitest + 13 deterministic Playwright tests passing (plus 1 live-model Playwright test that is inherently non-deterministic by design — see slice 5). `tsc --noEmit` and `next build` clean (18 routes).
+61 Vitest + 13 deterministic Playwright tests passing (plus 1 live-model Playwright test that is inherently non-deterministic by design — see slice 5). `tsc --noEmit` and `next build` clean (18 routes).
 
 ## ⏳ Next (slice 5)
 
