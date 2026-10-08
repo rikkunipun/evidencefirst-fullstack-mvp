@@ -3,12 +3,13 @@ import { z } from "zod";
 /** Every external input is validated with one of these at the server boundary. */
 
 export const SITUATION_CARDS = [
-  "school_college",
-  "work_job_search",
-  "household_family",
-  "money_purchases",
-  "health_routines",
-  "technology",
+  "school",
+  "college",
+  "work",
+  "job_search",
+  "household",
+  "business",
+  "retirement",
   "other",
   "skip",
 ] as const;
@@ -17,7 +18,7 @@ export const createSessionSchema = z.object({
   consentVersion: z.literal("v1"),
   situationCard: z.enum(SITUATION_CARDS),
   goal: z.string().trim().max(300).optional().nullable(),
-  decisionCue: z.string().trim().max(300).optional().nullable(),
+  decisionCueId: z.string().trim().max(60).optional().nullable(),
   cardOrder: z.array(z.string()).max(12).optional(),
   freeText: z.string().trim().max(2000).optional().nullable(),
 });

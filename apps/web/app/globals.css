@@ -1,26 +1,48 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --ef-bg: #fafaf9;
+  --ef-surface: #ffffff;
+  --ef-ink: #1e2a28;
+  --ef-muted: #5b6a67;
+  --ef-border: #e4e7e4;
+  --ef-accent: #0d6e5f; /* dark enough teal for white-text buttons at AA contrast */
+  --ef-accent-ink: #ffffff;
+  --ef-accent-soft: #e6f3ef;
+  --ef-focus: #0d6e5f;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-background: var(--ef-bg);
+  --color-foreground: var(--ef-ink);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  border-color: var(--ef-border);
+}
+
+html {
+  color-scheme: light;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--ef-bg);
+  color: var(--ef-ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.55;
+}
+
+:focus-visible {
+  outline: 3px solid var(--ef-focus);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
 }

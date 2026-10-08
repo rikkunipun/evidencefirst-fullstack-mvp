@@ -2,22 +2,9 @@
 
 Last updated: 2026-10-08 (continuous, see git log for exact times).
 
-## 🔴 Blocked — needs your input
+## ✅ Resolved — Supabase keys
 
-**`apps/web/.env.local` has the wrong Supabase keys.** Checked by prefix/length only (never printed in full):
-
-| Variable | Current value looks like | Problem |
-|---|---|---|
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | *(empty)* | Not set at all. |
-| `SUPABASE_SERVICE_ROLE_KEY` | `sb_publishable...` (46 chars) | This is the **publishable** key, not the secret/service-role key. |
-
-Effect: migrations and schema changes work fine (those go over a direct Postgres connection using `SUPABASE_DB_PASSWORD`, which **is** correct). But every `supabase-js` call made with `SUPABASE_SERVICE_ROLE_KEY` — seeding evidence units, and every server route handler once built — is actually authenticating as the public `anon`/`authenticated` role, not `service_role`. I confirmed table grants and RLS are correct server-side (`service_role` has `rolbypassrls=true` and full grants); the key itself is just the wrong one. I will not work around this by widening `anon`/`authenticated` grants — that would punch a real hole in the data (e.g. public write access to `evidence_units`).
-
-**What I need from you:** open Supabase dashboard → Project Settings → API keys, and give me:
-1. The **secret / service_role** key (new format starts `sb_secret_...`, legacy format is a long `eyJ...` JWT with `"role":"service_role"`).
-2. The **publishable** key (`sb_publishable_...` or legacy `eyJ...` anon JWT) for `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
-
-I'm continuing with everything that doesn't need live DB writes (routes, pages, pure-logic unit tests, build) while waiting.
+You corrected `apps/web/.env.local`. Re-verified by prefix/length only: `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` now starts `sb_publishable_` (46 chars), `SUPABASE_SERVICE_ROLE_KEY` now starts `sb_secret_` (41 chars). Seeded the evidence library against the real project: 15 rows in `evidence_units` (5 claims × 3 packs: `activity`, `study`, `learning`), confirmed via a live `select` with the service-role key.
 
 ## ✅ Done
 
@@ -27,6 +14,17 @@ I'm continuing with everything that doesn't need live DB writes (routes, pages, 
 - Full DB schema applied to the **real** Supabase project (migrations `0001_init`, `0002_rls`, `0003_grants`, tracked in a `schema_migrations` table so re-runs are idempotent): all tables from the plan, append-only/immutability triggers on frozen tables, RLS enabled with zero client-facing policies (deny-all; service-role bypass only).
 - Pure, unit-testable logic modules: `lib/state-machine.ts`, `lib/eligibility.ts` (6 gates), `lib/crux.ts` (2-pass cap), `lib/assignment.ts` (permuted-block 1:1), `lib/evidence.ts` (3 packs ported verbatim from `dist/evidence-packs.js`), `lib/followup.ts`, `lib/delivery-template.ts` (constrained composition, no free prose).
 - `lib/env.ts` (Zod-validated env, fails loudly on missing credentials), `lib/capability.ts` (hashed resume/follow-up tokens, signed cookie), `lib/supabase/service-client.ts`, `lib/supabase/admin-auth.ts` (Supabase Auth + `ADMIN_EMAILS` allowlist), `lib/ai/prompt.v1.ts` + `lib/ai/discovery.ts` (versioned prompt, provenance enforcement, bounded fallback), `lib/zod/discovery.ts` + `lib/zod/requests.ts`.
+
+## ✅ Slice 1 complete (scaffold, schema, auth, consent/capability)
+
+Smoke-tested live against the real Supabase project and `next dev` (not just typecheck):
+- `POST /api/sessions` → creates participant + session + consent event + context answer, issues signed resume cookie, transitions `consented -> context`. Verified real row in Postgres, then cleaned up the smoke-test row.
+- `GET /api/sessions/:id` → 404 without the cookie, full state snapshot with it. Cookie-forgery resistance confirmed (ID alone doesn't work).
+- `/admin` → 307 redirect to `/admin/login` when signed out (middleware + layout guard both exercised).
+- Researcher account provisioned via `scripts/provision-admins.mjs` for `rikkunipun23@gmail.com` (password shown once in terminal, not stored in any file).
+- `tsc --noEmit` clean across the whole app.
+
+Landing (`/`), consent+context flow (`/participate`), admin login/dashboard shell all render and round-trip correctly.
 
 ## ⏳ In progress / next
 

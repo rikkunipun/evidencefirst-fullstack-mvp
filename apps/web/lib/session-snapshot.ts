@@ -1,0 +1,148 @@
+import "server-only";
+import { getServiceClient } from "./supabase/service-client";
+import type { SessionState } from "./state-machine";
+
+/**
+ * Everything needed to render the participant's current step, or to drive
+ * server-side validation before a mutation. One shared builder so the UI
+ * and every route agree on exactly what the database says.
+ */
+export interface SessionSnapshot {
+  session: {
+    id: string;
+    state: SessionState;
+    revision: number;
+    packTopic: string | null;
+    createdAt: string;
+    withdrawnAt: string | null;
+  };
+  context: { situationCard: string; goal: string | null; decisionCue: string | null; freeText: string | null } | null;
+  messages: { id: string; turnNumber: number; role: string; content: string; createdAt: string }[];
+  latestExtraction: {
+    fields: Record<string, string | null>;
+    candidateDriver: string;
+    shouldStop: boolean;
+    stopReason: string | null;
+  } | null;
+  questionsAsked: number;
+  beliefConfirmation: { id: string; revision: number; generatedWording: string; confirmedWording: string | null; confirmedAt: string | null } | null;
+  eligibility: {
+    current: string;
+    specific: string;
+    causal: string;
+    consequential: string;
+    checkable: string;
+    safe: string;
+    disposition: string;
+    reasons: Record<string, string>;
+  } | null;
+  baseline: { beliefWording: string; scopeAndTime: string; baselineScore: number; frozenAt: string } | null;
+  cruxPasses: { passNumber: number; statedReason: string; confirmedReason: string | null; hypotheticalScore: number | null }[];
+  cruxClassification: string | null;
+  measurements: { phase: string; score: number; explanation: string | null; recordedAt: string }[];
+  assignment: { condition: "fixed" | "personalized"; packId: string; packVersion: string } | null;
+  draft: { id: string; claimOrder: string[]; renderedText: string; wordCount: number; contentHash: string } | null;
+  approval: { disposition: string; approvedAt: string } | null;
+  delivery: { exactText: string; claimIds: string[]; deliveredAt: string; displayedAckAt: string | null } | null;
+  followup: { dueAt: string; collectedAt: string | null } | null;
+}
+
+export async function loadSessionSnapshot(sessionId: string): Promise<SessionSnapshot | null> {
+  const supabase = getServiceClient();
+
+  const { data: session } = await supabase
+    .from("sessions")
+    .select("id, state, revision, pack_topic, created_at, withdrawn_at")
+    .eq("id", sessionId)
+    .maybeSingle();
+  if (!session) return null;
+
+  const [{ data: context }, { data: messages }, { data: extractions }, { data: confirmations }, { data: eligibilities }, { data: baseline }, { data: cruxPassesRaw }, { data: cruxClassRaw }, { data: measurements }, { data: assignment }, { data: draft }, { data: delivery }, { data: followup }] =
+    await Promise.all([
+      supabase.from("context_answers").select("situation_card, goal, decision_cue, free_text").eq("session_id", sessionId).maybeSingle(),
+      supabase.from("messages").select("id, turn_number, role, content, created_at").eq("session_id", sessionId).order("turn_number", { ascending: true }),
+      supabase
+        .from("extraction_snapshots")
+        .select("fields, candidate_driver, should_stop, stop_reason, created_at")
+        .eq("session_id", sessionId)
+        .order("created_at", { ascending: false })
+        .limit(1),
+      supabase.from("belief_confirmations").select("id, revision, generated_wording, confirmed_wording, confirmed_at").eq("session_id", sessionId).order("revision", { ascending: false }),
+      supabase.from("eligibility_evaluations").select("*").eq("session_id", sessionId).order("created_at", { ascending: false }).limit(1),
+      supabase.from("baseline_snapshots").select("belief_wording, scope_and_time, baseline_score, frozen_at").eq("session_id", sessionId).maybeSingle(),
+      supabase.from("crux_passes").select("id, pass_number, stated_reason, confirmed_reason, hypothetical_score").eq("session_id", sessionId).order("pass_number", { ascending: true }),
+      supabase.from("crux_classifications").select("classification, crux_pass_id, created_at").eq("session_id", sessionId).order("created_at", { ascending: false }).limit(1),
+      supabase.from("measurements").select("phase, score, explanation, recorded_at").eq("session_id", sessionId),
+      supabase.from("assignments").select("condition, pack_id, pack_version").eq("session_id", sessionId).maybeSingle(),
+      supabase.from("draft_revisions").select("id, claim_order, rendered_text, word_count, content_hash").eq("session_id", sessionId).order("created_at", { ascending: false }).limit(1),
+      supabase.from("deliveries").select("exact_text, claim_ids, delivered_at, displayed_ack_at").eq("session_id", sessionId).maybeSingle(),
+      supabase.from("followups").select("due_at, collected_at").eq("session_id", sessionId).maybeSingle(),
+    ]);
+
+  const latestConfirmation = confirmations?.[0] ?? null;
+  const latestDraftId = draft?.[0]?.id ?? null;
+  const { data: approval } = latestDraftId
+    ? await supabase.from("approvals").select("disposition, approved_at").eq("draft_revision_id", latestDraftId).order("approved_at", { ascending: false }).limit(1)
+    : { data: [] as { disposition: string; approved_at: string }[] };
+
+  return {
+    session: {
+      id: session.id,
+      state: session.state as SessionState,
+      revision: session.revision,
+      packTopic: session.pack_topic,
+      createdAt: session.created_at,
+      withdrawnAt: session.withdrawn_at,
+    },
+    context: context
+      ? { situationCard: context.situation_card, goal: context.goal, decisionCue: context.decision_cue, freeText: context.free_text }
+      : null,
+    messages: (messages ?? []).map((m) => ({ id: m.id, turnNumber: m.turn_number, role: m.role, content: m.content, createdAt: m.created_at })),
+    latestExtraction: extractions?.[0]
+      ? {
+          fields: extractions[0].fields,
+          candidateDriver: extractions[0].candidate_driver,
+          shouldStop: extractions[0].should_stop,
+          stopReason: extractions[0].stop_reason,
+        }
+      : null,
+    questionsAsked: (messages ?? []).filter((m) => m.role === "assistant").length,
+    beliefConfirmation: latestConfirmation
+      ? {
+          id: latestConfirmation.id,
+          revision: latestConfirmation.revision,
+          generatedWording: latestConfirmation.generated_wording,
+          confirmedWording: latestConfirmation.confirmed_wording,
+          confirmedAt: latestConfirmation.confirmed_at,
+        }
+      : null,
+    eligibility: eligibilities?.[0]
+      ? {
+          current: eligibilities[0].current_status,
+          specific: eligibilities[0].specific_status,
+          causal: eligibilities[0].causal_status,
+          consequential: eligibilities[0].consequential_status,
+          checkable: eligibilities[0].checkable_status,
+          safe: eligibilities[0].safe_status,
+          disposition: eligibilities[0].disposition,
+          reasons: eligibilities[0].reasons,
+        }
+      : null,
+    baseline: baseline
+      ? { beliefWording: baseline.belief_wording, scopeAndTime: baseline.scope_and_time, baselineScore: baseline.baseline_score, frozenAt: baseline.frozen_at }
+      : null,
+    cruxPasses: (cruxPassesRaw ?? []).map((c) => ({
+      passNumber: c.pass_number,
+      statedReason: c.stated_reason,
+      confirmedReason: c.confirmed_reason,
+      hypotheticalScore: c.hypothetical_score,
+    })),
+    cruxClassification: cruxClassRaw?.[0]?.classification ?? null,
+    measurements: (measurements ?? []).map((m) => ({ phase: m.phase, score: m.score, explanation: m.explanation, recordedAt: m.recorded_at })),
+    assignment: assignment ? { condition: assignment.condition, packId: assignment.pack_id, packVersion: assignment.pack_version } : null,
+    draft: draft?.[0] ? { id: draft[0].id, claimOrder: draft[0].claim_order, renderedText: draft[0].rendered_text, wordCount: draft[0].word_count, contentHash: draft[0].content_hash } : null,
+    approval: approval?.[0] ? { disposition: approval[0].disposition, approvedAt: approval[0].approved_at } : null,
+    delivery: delivery ? { exactText: delivery.exact_text, claimIds: delivery.claim_ids, deliveredAt: delivery.delivered_at, displayedAckAt: delivery.displayed_ack_at } : null,
+    followup: followup ? { dueAt: followup.due_at, collectedAt: followup.collected_at } : null,
+  };
+}

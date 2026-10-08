@@ -37,6 +37,9 @@ export function verifySessionCookie(cookieValue: string | undefined | null): str
   return sessionId;
 }
 
-export const SESSION_COOKIE_NAME = "__Host-ef-session";
+// Not using a __Host- prefix: that forces Secure, which would make the
+// cookie silently fail to set during local `next dev` over plain HTTP.
+// Production (Vercel) serves over HTTPS, where `secure: true` is still set.
+export const SESSION_COOKIE_NAME = "ef_session";
 export const RESUME_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 30; // 30 days
 export const FOLLOWUP_TOKEN_MAX_AGE_SECONDS = 60 * 60 * 24 * 21; // 21 days (due at +7, grace to +21)
