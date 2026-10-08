@@ -35,12 +35,13 @@
       <p class="side-title">Session</p>
       <nav class="steps">
         <button class="step active" data-view="start"><span class="n">1</span><b>Start</b></button>
-        <button class="step" data-view="story"><span class="n">2</span><b>Story</b></button>
+        <button class="step" data-view="story"><span class="n">2</span><b>Conversation</b></button>
         <button class="step" data-view="reason"><span class="n">3</span><b>Reason</b></button>
         <button class="step" data-view="check"><span class="n">4</span><b>Check</b></button>
-        <button class="step" data-view="confirm"><span class="n">5</span><b>Confirm</b></button>
-        <button class="step" data-view="response"><span class="n">6</span><b>Response</b></button>
-        <button class="step" data-view="record"><span class="n">7</span><b>Record</b></button>
+        <button class="step" data-view="confirm"><span class="n">5</span><b>Belief</b></button>
+        <button class="step" data-view="crux"><span class="n">6</span><b>Crux</b></button>
+        <button class="step" data-view="response"><span class="n">7</span><b>Response</b></button>
+        <button class="step" data-view="record"><span class="n">8</span><b>Record</b></button>
       </nav>
       <div class="divider"></div>
       <div class="autosave" id="saveState">Saved in this browser</div>
@@ -70,17 +71,17 @@
       </section>
 
       <section class="view" id="story">
-        <div class="head"><div><h2>Record one concrete story</h2><p>Ask the four questions in order. Write short answers in the participant's own words.</p></div><span class="tag">Required fields</span></div>
-        <div class="grid2">
-          <div class="field"><label>1 · What did you choose or avoid?</label><textarea id="chosen" placeholder="Example: I did no exercise while I was away for a wedding."></textarea><small>Record the action that actually happened.</small></div>
-          <div class="field"><label>2 · What was the real alternative?</label><textarea id="alternative" placeholder="Example: I could have walked or done a short body-weight session."></textarea><small>Use something available at that time, not an imaginary perfect option.</small></div>
-          <div class="field"><label>3 · What did you expect would happen?</label><textarea id="expected" placeholder="Example: Without a gym, I would not stay consistent or get useful results."></textarea><small>This expected result is the possible belief.</small></div>
-          <div class="field"><label>4 · Where did that expectation come from?</label><textarea id="origin" placeholder="Example: My past experience, a friend, a professional, a reel, or an assumption."></textarea><small>This tells the evidence selector what reason it must answer.</small></div>
+        <div class="head"><div><h2>Talk through one recent decision</h2><p>EvidenceFirst asks one question, listens to the answer, and uses it in the next question.</p></div><span class="tag">One question at a time</span></div>
+        <div class="instruction"><i id="storyNumber">1</i><div><h3 id="storyProgress">Question 1 of 4</h3><p id="storyQuestion">Tell us what happened.</p></div></div>
+        <div class="field" id="storyInputCard"><label>Your answer</label><textarea id="storyAnswer" placeholder="Answer in your own words."></textarea><small id="storyHelp">A short answer is enough. The next question will use what you say.</small></div>
+        <div id="conversationHistory" class="question-list" style="margin-top:12px"></div>
+        <textarea id="chosen" hidden></textarea><textarea id="alternative" hidden></textarea><textarea id="expected" hidden></textarea><textarea id="origin" hidden></textarea>
+        <div id="storyReview" style="display:none">
+          <div class="prompt"><b>Check our understanding</b><p id="storyReflection">Complete the conversation to generate the reflection.</p><small>Correct anything that is inaccurate before continuing.</small></div>
+          <label class="confirm"><input type="checkbox" id="storyConfirmed"><span>This accurately describes my decision and expectation.</span></label>
         </div>
-        <div class="prompt"><b>Read this back</b><p id="storyReflection">Complete the fields to generate the reflection.</p><small>Ask: “Is that accurate? What should I change?”</small></div>
-        <label class="confirm"><input type="checkbox" id="storyConfirmed"><span>The participant confirmed or corrected this summary.</span></label>
-        <div class="error" id="storyError">Complete all four answers and confirm the read-back.</div>
-        <div class="actions"><button class="btn ghost" data-go="start">Back</button><span class="actions-note">The system will now identify whether facts, pressure or practical barriers drove the decision.</span><button class="btn primary" id="storyNext">Continue</button></div>
+        <div class="error" id="storyError">Answer the current question before continuing.</div>
+        <div class="actions"><button class="btn ghost" data-go="start">Back</button><span class="actions-note">EvidenceFirst will never create a reason that the participant did not give.</span><button class="btn primary" id="storyNext">Next question</button></div>
       </section>
 
       <section class="view" id="reason">
@@ -116,15 +117,37 @@
         <div class="field"><label>How strongly do you believe this statement right now?</label><div class="range"><input type="range" id="preScore" min="0" max="10" value="8"><div class="score"><span id="preScoreValue">8</span>/10</div></div><small>0 means “I do not believe it”; 10 means “I am completely convinced.”</small></div>
         <label class="confirm"><input type="checkbox" id="beliefConfirmed"><span>The participant says this wording is accurate and the score refers to this exact statement.</span></label>
         <div class="error" id="confirmError">Confirm the final wording before generating a response.</div>
-        <div class="actions"><button class="btn ghost" data-go="check">Back</button><span class="actions-note" id="domainNote">Evidence availability will be checked next.</span><button class="btn primary" id="confirmNext">Generate verified response</button></div>
+        <div class="actions"><button class="btn ghost" data-go="check">Back</button><span class="actions-note" id="domainNote">Evidence availability will be checked next.</span><button class="btn primary" id="confirmNext">Find the main reason</button></div>
+      </section>
+
+      <section class="view" id="crux">
+        <div class="head"><div><h2>Find the reason carrying the belief</h2><p>The baseline is already recorded. Now test which participant-given reason actually affects confidence.</p></div><span class="tag">Maximum two reasons</span></div>
+        <div class="belief"><span class="label">Confirmed belief</span><div class="text" id="cruxBelief"></div></div>
+        <div class="field"><label>What is the main reason you are at that confidence number?</label><textarea id="cruxReason1" placeholder="Use the participant's exact words."></textarea><small>Do not suggest a reason. The participant must supply it.</small></div>
+        <label class="confirm"><input type="checkbox" id="cruxConfirmed1"><span>The participant confirmed that this is a main reason.</span></label>
+        <div class="field" style="margin-top:11px"><label>Suppose that reason turned out not to be true. What would your confidence be then?</label><div class="range"><input type="range" id="cruxScore1" min="0" max="10" value="8"><div class="score"><span id="cruxScore1Value">8</span>/10</div></div><small id="cruxDelta1">Compare this with the frozen baseline.</small></div>
+        <div id="secondCrux" style="display:none;margin-top:11px">
+          <div class="instruction"><i>2</i><div><h3>The first reason did not move confidence</h3><p>Ask once: “What other reason is doing more of the work?”</p></div></div>
+          <div class="field"><label>Second candidate reason</label><textarea id="cruxReason2" placeholder="Use the participant's exact words."></textarea></div>
+          <label class="confirm"><input type="checkbox" id="cruxConfirmed2"><span>The participant confirmed this second reason.</span></label>
+          <div class="field" style="margin-top:11px"><label>If the second reason turned out not to be true, what would confidence be?</label><div class="range"><input type="range" id="cruxScore2" min="0" max="10" value="8"><div class="score"><span id="cruxScore2Value">8</span>/10</div></div><small id="cruxDelta2">Compare this with the frozen baseline.</small></div>
+        </div>
+        <div class="grid2" style="margin-top:11px">
+          <div class="field"><label>What kind of reason is this?</label><select id="cruxType"><option value="">Choose…</option><option value="current">Current, observable claim</option><option value="testable">Near-term personal prediction we can test</option><option value="forecast">Distant or open-ended future prediction</option><option value="value">Value, identity or emotional commitment</option></select><small>Distant forecasts cannot be resolved by evidence about today.</small></div>
+          <div class="field"><label>Can trustworthy evidence or a feasible personal test check this exact reason?</label><select id="cruxCheckable"><option value="">Choose…</option><option value="yes">Yes</option><option value="no">No</option><option value="unsure">Unsure</option></select><small>Choose Yes only for the exact reason, not the broader topic.</small></div>
+        </div>
+        <div class="field" style="margin-top:11px"><label>After thinking through your reasons—but before seeing evidence—what is your confidence now?</label><div class="range"><input type="range" id="preEvidenceScore" min="0" max="10" value="8"><div class="score"><span id="preEvidenceScoreValue">8</span>/10</div></div><small>This separates change caused by elicitation from change caused by sourced evidence.</small></div>
+        <div class="result" id="cruxResult"><h3 id="cruxTitle">Complete the crux check</h3><p id="cruxText">EvidenceFirst will continue only with a participant-confirmed, load-bearing and checkable reason.</p></div>
+        <div class="error" id="cruxError">Complete the visible crux questions.</div>
+        <div class="actions"><button class="btn ghost" data-go="confirm">Back</button><span class="actions-note">A zero change is valid. The system records it and stops instead of pushing harder.</span><button class="btn primary" id="cruxNext">Continue</button></div>
       </section>
 
       <section class="view" id="response">
         <div class="head"><div><h2>Participant-facing response</h2><p>The exact text below is stored in the session receipt.</p></div><span class="tag" id="responseTag">Source gated</span></div>
         <div class="condition"><div><b>Experiment condition</b><p id="conditionText">Not assigned</p></div><button class="btn" id="assignCondition">Assign once</button></div>
-        <div class="field" id="focusField"><label>Which concern mattered most?</label><select id="reasonFocus"><option value="motivation">Motivation or accountability</option><option value="equipment">Equipment or strength training</option><option value="time">Not enough time for a full session</option><option value="results">Whether other activity has any value</option></select><small>This changes which verified facts arrive in the personalized condition. It does not change tone.</small></div>
+        <div class="field" id="focusField"><label>Evidence theme selected from the confirmed crux</label><select id="reasonFocus" disabled><option value="motivation">Motivation or accountability</option><option value="equipment">Equipment or strength training</option><option value="time">Not enough time for a full session</option><option value="results">Whether other activity has value</option></select><small>The app maps the participant's confirmed reason to an audited evidence tag. It does not invent a new reason.</small></div><div class="prompt"><b>Confirmed crux</b><p id="responseCrux">Not recorded.</p></div>
         <div class="delivery" id="delivery" style="margin-top:12px"><p>Assign the experiment condition to generate the exact response.</p></div>
-        <div class="actions"><button class="btn ghost" data-go="confirm">Back</button><span class="actions-note">Outside the audited exercise library, V3 records a refusal instead of inventing evidence.</span><button class="btn primary" id="responseNext">Record outcome</button></div>
+        <div class="actions"><button class="btn ghost" data-go="crux">Back</button><span class="actions-note">Outside the audited exercise library, V3 records a refusal instead of inventing evidence.</span><button class="btn primary" id="responseNext">Record outcome</button></div>
       </section>
 
       <section class="view" id="record">
@@ -145,6 +168,7 @@
       <div class="summary-row"><span>Decision</span><b id="sumDecision">Not recorded</b></div>
       <div class="summary-row"><span>Primary driver</span><b id="sumDriver">Not classified</b></div>
       <div class="summary-row"><span>Eligibility</span><b class="status" id="sumEligibility">Not checked</b></div>
+      <div class="summary-row"><span>Crux</span><b id="sumCrux">Not recorded</b></div>
       <div class="summary-row"><span>Condition</span><b id="sumCondition">Not assigned</b></div>
       <div class="summary-row"><span>Evidence mode</span><b id="sumEvidence">Not reached</b></div>
     </aside>
@@ -152,10 +176,10 @@
 </div>
 
 <script>
-const STORAGE_KEY='evidencefirst_v3_1_session';
+const STORAGE_KEY='evidencefirst_v3_2_session';
 const views=[...document.querySelectorAll('.view')];
 const steps=[...document.querySelectorAll('.step')];
-const emptyState={role:'',domain:'',answers:{outcome:'',social:'',barrier:'',preference:''},classification:'',eligible:false,eligibilityReasons:[],condition:'',deliveredText:'',claims:[],parked:false,beliefText:''};
+const emptyState={role:'',domain:'',storyStep:0,answers:{outcome:'',social:'',barrier:'',preference:''},classification:'',eligible:false,eligibilityReasons:[],condition:'',deliveredText:'',claims:[],parked:false,beliefText:'',cruxReady:false,cruxReason:'',cruxBaseline:null,cruxHypothetical:null,cruxDelta:null,preEvidenceScore:null};
 let state={...emptyState};
 const roleNames={student:'Student / job seeker',working:'Working adult',parent:'Parent / household',older:'Older adult'};
 const domainNames={exercise:'Exercise',career:'Study / career',purchase:'Purchase / money',other:'Another safe topic'};
@@ -180,18 +204,100 @@ function value(id){return byId(id).value.trim()}
 function setError(id,show){byId(id).classList.toggle('show',show)}
 function go(id){const idx=views.findIndex(v=>v.id===id);views.forEach(v=>v.classList.toggle('active',v.id===id));steps.forEach((s,i)=>{s.classList.toggle('active',s.dataset.view===id);if(i<idx)s.classList.add('done')});if(id==='record')renderReceipt();window.scrollTo({top:0,behavior:'smooth'});save()}
 function save(){const fields={};document.querySelectorAll('input[id],textarea[id],select[id]').forEach(el=>{fields[el.id]=el.type==='checkbox'?el.checked:el.value});localStorage.setItem(STORAGE_KEY,JSON.stringify({state,fields,view:views.find(v=>v.classList.contains('active'))?.id||'start'}));byId('saveState').textContent='Saved in this browser'}
-function restore(){try{const saved=JSON.parse(localStorage.getItem(STORAGE_KEY));if(!saved)return;state={...emptyState,...saved.state,answers:{...emptyState.answers,...saved.state?.answers}};Object.entries(saved.fields||{}).forEach(([id,v])=>{const el=byId(id);if(el){if(el.type==='checkbox')el.checked=v;else el.value=v}});byId('beliefText').textContent=state.beliefText||'';byId('preScoreValue').textContent=byId('preScore').value;byId('postScoreValue').textContent=byId('postScore').value;byId('costFields').style.display=value('gateConsequence')==='yes'?'grid':'none';syncSelections();updateOpening();updateReflection();classify();assess();updateSummary();go(saved.view||'start')}catch(e){localStorage.removeItem(STORAGE_KEY)}}
+function restore(){try{const saved=JSON.parse(localStorage.getItem(STORAGE_KEY));if(!saved)return;state={...emptyState,...saved.state,answers:{...emptyState.answers,...saved.state?.answers}};Object.entries(saved.fields||{}).forEach(([id,v])=>{const el=byId(id);if(el){if(el.type==='checkbox')el.checked=v;else el.value=v}});byId('beliefText').textContent=state.beliefText||'';renderStory();byId('preScoreValue').textContent=byId('preScore').value;byId('postScoreValue').textContent=byId('postScore').value;byId('costFields').style.display=value('gateConsequence')==='yes'?'grid':'none';syncSelections();updateOpening();updateReflection();classify();assess();updateSummary();if(state.condition){byId('conditionText').textContent=state.condition+' condition · assignment locked';byId('assignCondition').disabled=true;byId('assignCondition').textContent='Assigned';renderDelivery()}go(saved.view||'start')}catch(e){localStorage.removeItem(STORAGE_KEY)}}
 function syncSelections(){document.querySelectorAll('[data-role]').forEach(b=>b.classList.toggle('active',b.dataset.role===state.role));document.querySelectorAll('[data-domain]').forEach(b=>b.classList.toggle('active',b.dataset.domain===state.domain));document.querySelectorAll('[data-answer-group]').forEach(group=>{const key=group.dataset.answerGroup;group.querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.value===state.answers[key]))})}
-function updateOpening(){byId('openingPrompt').textContent=state.role&&state.domain?prompts[state.role][state.domain]:'Choose a person and an area to see the opening question.';updateSummary();save()}
+function updateOpening(){byId('openingPrompt').textContent=state.role&&state.domain?prompts[state.role][state.domain]:'Choose a person and an area to see the opening question.';renderStory();updateSummary();save()}
+const storyFields=['chosen','alternative','expected','origin'];
+function storyQuestion(step){
+  if(step===0)return state.role&&state.domain?prompts[state.role][state.domain]:'Tell me about one recent decision.';
+  if(step===1)return 'You said you '+value('chosen')+'. What real alternative was available at that time?';
+  if(step===2)return 'If you had chosen '+value('alternative')+', what did you expect would happen?';
+  return 'What most made you expect “'+value('expected')+'”?';
+}
+function storyHistory(){
+  const labels=['What happened','Available alternative','Expected result','Where the expectation came from'];
+  return storyFields.map((id,i)=>value(id)?'<div class="question"><h3>'+escapeHtml(labels[i])+'</h3><p style="color:var(--ink);margin:0">'+escapeHtml(value(id))+'</p></div>':'').join('');
+}
+function renderStory(){
+  state.storyStep=Math.max(0,Math.min(4,Number(state.storyStep)||0));
+  byId('conversationHistory').innerHTML=storyHistory();
+  const complete=state.storyStep>=4;
+  byId('storyInputCard').style.display=complete?'none':'block';
+  byId('storyReview').style.display=complete?'block':'none';
+  byId('storyNumber').textContent=complete?'✓':String(state.storyStep+1);
+  byId('storyProgress').textContent=complete?'Check the complete story':'Question '+(state.storyStep+1)+' of 4';
+  byId('storyQuestion').textContent=complete?'Read the summary below and correct anything that is wrong.':storyQuestion(state.storyStep);
+  byId('storyNext').textContent=complete?'Continue':'Next question';
+  updateReflection();
+}
+function advanceStory(){
+  if(state.storyStep<4){
+    const answer=value('storyAnswer');
+    const bad=!answer;
+    setError('storyError',bad);
+    if(bad)return;
+    byId(storyFields[state.storyStep]).value=answer;
+    byId('storyAnswer').value='';
+    state.storyStep+=1;
+    renderStory();
+    save();
+    return;
+  }
+  const bad=!storyFields.every(id=>value(id))||!byId('storyConfirmed').checked;
+  setError('storyError',bad);
+  if(!bad)go('reason');
+}
 function updateReflection(){const complete=['chosen','alternative','expected'].every(id=>value(id));byId('storyReflection').textContent=complete?'“You said: '+value('chosen')+' The available alternative was: '+value('alternative')+' You expected: '+value('expected')+' Is that accurate?”':'Complete the fields to generate the reflection.';updateSummary();save()}
 function classify(){const a=state.answers;let title='Waiting for four answers',text='The classification will appear here.',badge='INCOMPLETE',candidate=false;if(Object.values(a).every(Boolean)){if(a.outcome==='yes'){candidate=true;title='Outcome belief candidate';const mixed=[];if(a.social==='yes')mixed.push('social influence');if(a.barrier==='yes')mixed.push('a practical barrier');if(a.preference==='yes')mixed.push('a preference or value');text='A predicted result appears to have influenced the decision.'+(mixed.length?' Also record '+mixed.join(' and ')+'.':'');badge='CHECK ELIGIBILITY'}else if(a.barrier==='yes'){title='Practical barrier or behavior gap';text='The person did not reject the alternative because they thought it would fail. Help with time, money, access, skill, habit or follow-through instead.';badge='PARK'}else if(a.social==='yes'){title='Social influence case';text='Another person’s reaction appears to be the main driver. Do not disguise it as a factual error.';badge='PARK'}else if(a.preference==='yes'){title='Preference or value';text='The decision mainly reflects taste, identity or priorities. These are not factual errors.';badge='PARK'}else{title='No stable driver yet';text='Ask one clarification question: “What most made the alternative seem wrong for you?”';badge='CLARIFY'}}state.classification=title;const box=byId('classification');box.classList.toggle('candidate',candidate);byId('classTitle').textContent=title;byId('classText').textContent=text;byId('classBadge').textContent=badge;updateSummary();save()}
 function assess(){const specific=['chosen','alternative','expected','origin'].every(id=>value(id))&&byId('storyConfirmed').checked;const gates={current:value('gateCurrent'),specific:specific?'yes':'no',causal:value('gateCausal'),consequential:value('gateConsequence'),checkable:value('gateCheckable'),safe:value('gateSafe')};const required=[gates.current,gates.causal,gates.consequential,gates.checkable,gates.safe];const complete=required.every(Boolean);const box=byId('eligibilityResult');if(!complete){state.eligible=false;state.parked=false;state.eligibilityReasons=[];box.classList.remove('pass');byId('eligibilityTitle').textContent='Complete five answers';byId('eligibilityText').textContent='Answer the participant-facing questions. V3 calculates specificity automatically.';byId('eligibilityList').innerHTML='';updateSummary();save();return gates}const missing=[];if(state.classification!=='Outcome belief candidate')missing.push('The primary driver is not yet a factual outcome belief.');if(gates.current!=='yes')missing.push('The belief is not confirmed as current.');if(!specific)missing.push('The story or participant confirmation is incomplete.');if(gates.causal!=='yes')missing.push('The belief-to-decision link is not confirmed.');if(gates.consequential!=='yes')missing.push('No measurable past cost is established.');if(gates.consequential==='yes'&&(!value('costType')||!value('costDetail')))missing.push('The consequence needs a type and concrete description.');if(gates.checkable!=='yes')missing.push('No trustworthy evidence or feasible test is confirmed.');if(gates.safe!=='yes')missing.push('The topic is sensitive, out of scope or needs human review.');state.eligible=missing.length===0;state.parked=!state.eligible;state.eligibilityReasons=missing;box.classList.toggle('pass',state.eligible);byId('eligibilityTitle').textContent=state.eligible?'Eligible to continue':'Park or clarify';byId('eligibilityText').textContent=state.eligible?'All six checks passed. Confirm the participant’s exact wording next.':'V3 will not generate persuasive evidence for this case yet.';byId('eligibilityList').innerHTML=(state.eligible?['Current, specific, causal, consequential, checkable and safe.']:missing).map(x=>'<li>'+escapeHtml(x)+'</li>').join('');updateSummary();save();return gates}
 function createBelief(){state.beliefText='My current belief is: '+value('expected')+' This belief contributed to my decision: '+value('chosen');byId('beliefText').textContent=state.beliefText;byId('domainNote').textContent=state.domain==='exercise'?'Verified exercise evidence is available.':'This domain has no audited evidence library; V3 will refuse persuasion and export the case.';save()}
+function inferFocus(reason){const r=String(reason||'').toLowerCase();if(/motivat|accountab|consisten|people|friend|track|feedback/.test(r))return'motivation';if(/equipment|machine|weight|strength/.test(r))return'equipment';if(/time|busy|short|hour|session/.test(r))return'time';return'results'}
+function updateCrux(){
+  const baseline=state.cruxBaseline===null?Number(value('preScore')||0):Number(state.cruxBaseline);
+  byId('cruxBelief').textContent=byId('beliefText').textContent.trim();
+  const first=Number(value('cruxScore1')||0),delta1=baseline-first;
+  byId('cruxScore1Value').textContent=first;
+  byId('cruxDelta1').textContent=delta1>0?'Confidence would fall by '+delta1+' point'+(delta1===1?'':'s')+'.':delta1===0?'Confidence would not change. Ask once for another reason.':'Confidence would rise; this is not a load-bearing reason against the belief.';
+  const firstEntered=Boolean(value('cruxReason1')&&byId('cruxConfirmed1').checked);
+  const firstReady=firstEntered&&delta1>0;
+  byId('secondCrux').style.display=firstEntered&&!firstReady?'block':'none';
+  const second=Number(value('cruxScore2')||0),delta2=baseline-second;
+  byId('cruxScore2Value').textContent=second;
+  byId('cruxDelta2').textContent=delta2>0?'Confidence would fall by '+delta2+' point'+(delta2===1?'':'s')+'.':delta2===0?'Confidence would not change. No load-bearing reason was found in two passes.':'Confidence would rise; this is not a load-bearing reason against the belief.';
+  const secondReady=Boolean(value('cruxReason2')&&byId('cruxConfirmed2').checked&&delta2>0);
+  const chosen=firstReady?{reason:value('cruxReason1'),score:first,delta:delta1}:secondReady?{reason:value('cruxReason2'),score:second,delta:delta2}:null;
+  const type=value('cruxType');
+  state.cruxReady=Boolean(chosen&&value('cruxCheckable')==='yes'&&(type==='current'||type==='testable'));
+  state.cruxReason=chosen?.reason||'';
+  state.cruxHypothetical=chosen?.score??null;
+  state.cruxDelta=chosen?.delta??null;
+  const box=byId('cruxResult');box.classList.toggle('pass',state.cruxReady);
+  if(state.cruxReady){byId('cruxTitle').textContent='Checkable crux found';byId('cruxText').textContent='If this reason were false, confidence would fall by '+state.cruxDelta+'. Evidence selection may now target this reason.'}
+  else if(chosen&&type==='forecast'){byId('cruxTitle').textContent='Distant forecast detected';byId('cruxText').textContent='Evidence about today cannot settle an open-ended future prediction. Narrow it to a current claim or park the case.'}
+  else if(chosen&&type==='value'){byId('cruxTitle').textContent='Value or identity reason';byId('cruxText').textContent='This is not a factual crux for EvidenceFirst. Preserve it and park factual persuasion.'}
+  else if(chosen&&value('cruxCheckable')!=='yes'){byId('cruxTitle').textContent='Reason is load-bearing but not yet checkable';byId('cruxText').textContent='Choose Yes only when an audited source or feasible personal test can address this exact reason.'}
+  else if(firstEntered&&!firstReady&&byId('secondCrux').style.display==='block'){byId('cruxTitle').textContent='Test one other reason';byId('cruxText').textContent='The first reason did not change confidence. Ask once for the reason doing more work.'}
+  else{byId('cruxTitle').textContent='Complete the crux check';byId('cruxText').textContent='EvidenceFirst will continue only with a participant-confirmed, load-bearing and checkable reason.'}
+  const preEvidence=Number(value('preEvidenceScore')||baseline);state.preEvidenceScore=preEvidence;byId('preEvidenceScoreValue').textContent=preEvidence;
+  byId('sumCrux').textContent=state.cruxReason||'Not confirmed';
+  updateSummary();save();
+}
+function finishCrux(){
+  updateCrux();
+  const firstDone=Boolean(value('cruxReason1')&&byId('cruxConfirmed1').checked&&value('cruxType')&&value('cruxCheckable'));
+  const needSecond=firstDone&&Number(value('cruxScore1'))>=Number(value('preScore'));
+  const secondDone=!needSecond||Boolean(value('cruxReason2')&&byId('cruxConfirmed2').checked);
+  const bad=!firstDone||!secondDone;
+  setError('cruxError',bad);
+  if(bad)return;
+  if(!state.cruxReady){state.parked=true;state.deliveredText='No persuasive response was delivered because two participant-given reasons failed to produce a checkable, load-bearing crux.';go('record');return}
+  const focus=inferFocus(state.cruxReason);byId('reasonFocus').value=focus;byId('responseCrux').textContent=state.cruxReason;go('response');
+}
 function assignCondition(){if(state.condition)return;state.condition=Math.random()<.5?'Personalized':'Fixed brief';byId('conditionText').textContent=state.condition+' condition · assignment locked';byId('sumCondition').textContent=state.condition;byId('assignCondition').disabled=true;byId('assignCondition').textContent='Assigned';renderDelivery();save()}
 function renderDelivery(){if(!state.condition)return;if(state.domain!=='exercise'){state.claims=[];state.deliveredText='I cannot provide a factual persuasion response for this topic because this version has no audited evidence library for it. I can preserve the belief, reason and eligibility record for a researcher to review.';byId('responseTag').textContent='Refusal';byId('responseTag').className='tag warn';byId('focusField').style.display='none';byId('delivery').innerHTML='<div class="refusal">'+escapeHtml(state.deliveredText)+'</div>';byId('sumEvidence').textContent='Refused · library unavailable';save();return}byId('responseTag').textContent='Source gated';byId('responseTag').className='tag';byId('focusField').style.display=state.condition==='Personalized'?'block':'none';const focus=value('reasonFocus')||'motivation';let ids=Object.keys(claimLibrary);if(state.condition==='Personalized')ids.sort((a,b)=>Number(claimLibrary[b].tags.includes(focus))-Number(claimLibrary[a].tags.includes(focus)));ids=ids.slice(0,5);state.claims=ids;const intro=state.condition==='Personalized'?'You said your main concern is '+byId('reasonFocus').selectedOptions[0].text.toLowerCase()+'. The evidence supports a narrower view:':'Here is the same verified brief shown to every participant in the fixed condition:';const claimText=ids.map(id=>id+' — '+claimLibrary[id].text).join(' ');state.deliveredText=intro+' '+claimText+' This evidence does not prove that every alternative will match a gym program or guarantee your personal consistency.';byId('delivery').innerHTML='<h3>'+escapeHtml(intro)+'</h3>'+ids.map(id=>{const c=claimLibrary[id];return '<div class="claim"><b>'+id+' · '+escapeHtml(c.title)+'</b><p>'+escapeHtml(c.text)+'</p><a target="_blank" rel="noreferrer" href="'+c.url+'">'+escapeHtml(c.source)+'</a></div>'}).join('')+'<div class="refusal" style="margin-top:10px">Boundary: these sources do not establish identical results or guarantee this participant’s future consistency.</div>';byId('sumEvidence').textContent=ids.length+' verified claims · equal claim budget';save()}
 function finishCheck(){const required=['gateCurrent','gateCausal','gateConsequence','gateCheckable','gateSafe'];const incomplete=required.some(id=>!value(id));setError('checkError',incomplete);if(incomplete)return;assess();if(state.eligible){createBelief();go('confirm')}else{state.deliveredText='No persuasive response was delivered because the case did not pass every eligibility check.';go('record')}}
-function renderReceipt(){const gates=assess();const receipt={version:'EvidenceFirst V3',session_timestamp:new Date().toISOString(),consent:byId('consent').checked,role:state.role,domain:state.domain,story:{chosen:value('chosen'),alternative:value('alternative'),expected:value('expected'),origin:value('origin'),participant_confirmed:byId('storyConfirmed').checked},reason_answers:state.answers,classification:state.classification,eligibility:{eligible:state.eligible,gates,reasons:state.eligibilityReasons,cost_type:value('costType'),cost_detail:value('costDetail')},frozen_belief:byId('beliefText').textContent||'',before_score:Number(value('preScore')||0),condition:state.condition||null,claim_ids:state.claims,exact_delivered_text:state.deliveredText,after_score:state.eligible?Number(value('postScore')||0):null,reaction:state.eligible?value('reaction'):'',followup_date:state.eligible?value('followupDate'):''};byId('receipt').textContent=JSON.stringify(receipt,null,2);byId('measurementFields').style.display=state.eligible?'block':'none';byId('recordTitle').textContent=state.eligible?'Record what happened':'Parked case saved';byId('recordSubtitle').textContent=state.eligible?'Complete the immediate measurement and export the exact session.':'No persuasive response was delivered. Export this case as discovery research.';return receipt}
-function updateSummary(){byId('sumRole').textContent=roleNames[state.role]||'Not selected';byId('sumDomain').textContent=domainNames[state.domain]||'Not selected';byId('sumDecision').textContent=value('chosen')||'Not recorded';byId('sumDriver').textContent=state.classification||'Not classified';byId('sumEligibility').textContent=state.eligible?'Eligible':state.eligibilityReasons.length?'Park / clarify':'Not checked';byId('sumEligibility').classList.toggle('pass',state.eligible);byId('sumCondition').textContent=state.condition||'Not assigned'}
+function renderReceipt(){const gates=assess();const delivered=Boolean(state.eligible&&state.cruxReady&&state.condition);const receipt={version:'EvidenceFirst V3.2',session_timestamp:new Date().toISOString(),consent:byId('consent').checked,role:state.role,domain:state.domain,story:{chosen:value('chosen'),alternative:value('alternative'),expected:value('expected'),origin:value('origin'),participant_confirmed:byId('storyConfirmed').checked},reason_answers:state.answers,classification:state.classification,eligibility:{eligible:state.eligible,gates,reasons:state.eligibilityReasons,cost_type:value('costType'),cost_detail:value('costDetail')},frozen_belief:byId('beliefText').textContent||'',before_score:Number(value('preScore')||0),crux:{reason:state.cruxReason||null,hypothetical_score:state.cruxHypothetical,score_difference:state.cruxDelta,type:value('cruxType')||null,checkable:value('cruxCheckable')||null,confirmed:state.cruxReady,pre_evidence_score:state.preEvidenceScore},condition:state.condition||null,claim_ids:state.claims,exact_delivered_text:state.deliveredText,after_score:delivered?Number(value('postScore')||0):null,reaction:delivered?value('reaction'):'',followup_date:delivered?value('followupDate'):''};byId('receipt').textContent=JSON.stringify(receipt,null,2);byId('measurementFields').style.display=delivered?'block':'none';byId('recordTitle').textContent=delivered?'Record what happened':'Parked case saved';byId('recordSubtitle').textContent=delivered?'Complete the immediate measurement and export the exact session.':'No persuasive response was delivered. Export this case as discovery research.';return receipt}
+function updateSummary(){byId('sumRole').textContent=roleNames[state.role]||'Not selected';byId('sumDomain').textContent=domainNames[state.domain]||'Not selected';byId('sumDecision').textContent=value('chosen')||'Not recorded';byId('sumDriver').textContent=state.classification||'Not classified';byId('sumEligibility').textContent=state.eligible?(state.cruxReady?'Eligible · crux confirmed':'Eligible · crux pending'):state.eligibilityReasons.length?'Park / clarify':'Not checked';byId('sumEligibility').classList.toggle('pass',state.eligible&&state.cruxReady);byId('sumCrux').textContent=state.cruxReason||'Not recorded';byId('sumCondition').textContent=state.condition||'Not assigned'}
 function escapeHtml(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]))}
 
 document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>go(b.dataset.go));
@@ -200,21 +306,24 @@ document.querySelectorAll('[data-domain]').forEach(b=>b.onclick=()=>{state.domai
 document.querySelectorAll('[data-answer-group] button').forEach(b=>b.onclick=()=>{const group=b.closest('[data-answer-group]').dataset.answerGroup;state.answers[group]=b.dataset.value;syncSelections();classify()});
 document.querySelectorAll('input[id],textarea[id],select[id]').forEach(el=>{el.addEventListener('input',()=>{if(['chosen','alternative','expected','origin'].includes(el.id))updateReflection();if(el.id.startsWith('gate')||['storyConfirmed','costType','costDetail'].includes(el.id))assess();save()});el.addEventListener('change',()=>{if(el.id==='gateConsequence')byId('costFields').style.display=el.value==='yes'?'grid':'none';assess();save()})});
 byId('startNext').onclick=()=>{const bad=!byId('consent').checked||!state.role||!state.domain;setError('startError',bad);if(!bad)go('story')};
-byId('storyNext').onclick=()=>{const bad=!['chosen','alternative','expected','origin'].every(id=>value(id))||!byId('storyConfirmed').checked;setError('storyError',bad);if(!bad)go('reason')};
+byId('storyNext').onclick=advanceStory;
 byId('reasonNext').onclick=()=>{const bad=!Object.values(state.answers).every(Boolean);setError('reasonError',bad);if(!bad){classify();go('check')}};
 byId('checkNext').onclick=finishCheck;
 byId('preScore').oninput=()=>{byId('preScoreValue').textContent=byId('preScore').value;save()};
-byId('postScore').oninput=()=>{byId('postScoreValue').textContent=byId('postScore').value;save()};
-byId('confirmNext').onclick=()=>{const bad=!byId('beliefConfirmed').checked||!byId('beliefText').textContent.trim();setError('confirmError',bad);if(!bad)go('response')};
+byId('postScore').oninput=()=>{byId('postScoreValue').textContent=byId('postScore').value;renderReceipt();save()};
+byId('confirmNext').onclick=()=>{const bad=!byId('beliefConfirmed').checked||!byId('beliefText').textContent.trim();setError('confirmError',bad);if(!bad){if(state.cruxBaseline===null){state.cruxBaseline=Number(value('preScore'));byId('cruxScore1').value=value('preScore');byId('cruxScore2').value=value('preScore');byId('preEvidenceScore').value=value('preScore')}updateCrux();go('crux')}};
 byId('beliefText').addEventListener('input',()=>{state.beliefText=byId('beliefText').textContent.trim();save()});
 byId('assignCondition').onclick=assignCondition;
+byId('cruxScore1').oninput=updateCrux;byId('preEvidenceScore').oninput=updateCrux;byId('cruxScore2').oninput=updateCrux;byId('cruxReason1').oninput=updateCrux;byId('cruxReason2').oninput=updateCrux;byId('cruxConfirmed1').onchange=updateCrux;byId('cruxConfirmed2').onchange=updateCrux;byId('cruxType').onchange=updateCrux;byId('cruxCheckable').onchange=updateCrux;byId('cruxNext').onclick=finishCrux;
 byId('reasonFocus').onchange=()=>{renderDelivery();save()};
 byId('responseNext').onclick=()=>{if(!state.condition)assignCondition();go('record')};
+byId('reaction').oninput=()=>{renderReceipt();save()};
+byId('followupDate').onchange=()=>{renderReceipt();save()};
 byId('downloadReceipt').onclick=()=>{const data=JSON.stringify(renderReceipt(),null,2);const blob=new Blob([data],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='evidencefirst-session-'+new Date().toISOString().slice(0,10)+'.json';a.click();URL.revokeObjectURL(a.href)};
 byId('copyReceipt').onclick=async()=>{await navigator.clipboard.writeText(byId('receipt').textContent);byId('copyReceipt').textContent='Copied';setTimeout(()=>byId('copyReceipt').textContent='Copy JSON',1200)};
 byId('clearSession').onclick=()=>{localStorage.removeItem(STORAGE_KEY);location.reload()};
 const follow=new Date();follow.setDate(follow.getDate()+7);byId('followupDate').value=follow.toISOString().slice(0,10);
-restore();updateOpening();updateReflection();classify();assess();updateSummary();
+restore();updateOpening();renderStory();updateReflection();classify();assess();updateCrux();updateSummary();
 </script>
 </body>
 </html>
