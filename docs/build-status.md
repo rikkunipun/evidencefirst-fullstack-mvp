@@ -77,7 +77,7 @@ Admin UI added: `/admin/sessions/[id]` (full 11-section vertical trace + draft/a
 
 **Honest note on live-model e2e flakiness:** re-running the full live discovery conversation a second time, the model legitimately parked the case instead of reaching a candidate (different phrasing led it to judge the story as not-yet-stable) — that's the real non-deterministic nature of an LLM-driven interview, not a bug, and is exactly why the deterministic tests above exist as the repeatable signal while the live run is the supplementary one-time check the brief asks for. Separately hit real Supabase-Auth-login flakiness mid-session that turned out to be a stale Turbopack dev-server state after the `middleware.ts→proxy.ts` rename — a `next dev` restart fixed it immediately and reproducibly; noted here since it could confuse a future session.
 
-61 Vitest + 9 Playwright tests passing (excluding the known-flaky live-discovery continuation, which is inherently non-deterministic by design). `tsc --noEmit` and `next build` clean (18 routes).
+53 Vitest + 13 deterministic Playwright tests passing (plus 1 live-model Playwright test that is inherently non-deterministic by design — see slice 5). `tsc --noEmit` and `next build` clean (18 routes).
 
 ## ⏳ Next (slice 5)
 
