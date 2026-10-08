@@ -7,7 +7,7 @@ import { NextResponse, type NextRequest } from "next/server";
  * scoped by `config.matcher` below to avoid unnecessary cookie writes on
  * the participant path.
  */
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(
