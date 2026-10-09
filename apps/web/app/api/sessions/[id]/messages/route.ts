@@ -10,6 +10,8 @@ import { generateBeliefWording, generateDecisionNarrative, generateEmpiricalClai
 import { DISCOVERY_QUESTION_BUDGET } from "@/lib/constants";
 import { recordAuditEvent } from "@/lib/audit";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { proposeTopicKey, topicConfirmationQuestion, interpretYesNo } from "@/lib/topic-proposal";
+import { getEnabledPackForTopic } from "@/lib/evidence";
 
 // Every substantive park must show a nonempty reason (null, "", and
 // whitespace-only all count as missing). "candidate_ready" deliberately has
@@ -267,6 +269,34 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   // should_stop === true: either move to confirmation, or park honestly.
   if (turn.stop_reason === "candidate_ready" && hasCore && !unsafe) {
+    // Tier 2 item 9: a free-text-only story (no situation card) leaves
+    // pack_topic null forever, which fails the checkable gate regardless
+    // of actual content. Propose a catalog topic from the participant's
+    // own words and ask ONE neutral yes/no question before confirmation —
+    // never force-matched; a decline or anything ambiguous leaves
+    // pack_topic null and proceeds exactly as before.
+    if (!session.pack_topic) {
+      const participantText = recentMessages
+        .filter((m) => m.role === "participant")
+        .map((m) => m.content)
+        .join(" ");
+      const proposed = proposeTopicKey(participantText);
+      if (proposed) {
+        const question = topicConfirmationQuestion(proposed);
+        const alreadyAsked = recentMessages.some((m) => m.role === "assistant" && m.content === question);
+        if (!alreadyAsked) {
+          const { error } = await supabase.from("messages").insert({ session_id: id, turn_number: nextTurnNumber, role: "assistant", input_mode: "text", content: question });
+          return NextResponse.json({ assistantQuestion: error ? null : question, done: false, safety: turn.safety });
+        }
+        if (interpretYesNo(participantMessage?.content ?? "") && getEnabledPackForTopic(proposed)) {
+          await supabase.from("sessions").update({ pack_topic: proposed }).eq("id", id);
+          await recordAuditEvent({ actorType: "system", action: "topic_proposed_and_confirmed", entityType: "sessions", entityId: id, after: { proposedTopic: proposed } });
+        }
+        // Decline/ambiguous: pack_topic stays null; falls through to the
+        // existing confirmation path exactly as before.
+      }
+    }
+
     const generatedWording = generateBeliefWording(fieldsAfter);
     await supabase.from("belief_confirmations").insert({
       session_id: id,
