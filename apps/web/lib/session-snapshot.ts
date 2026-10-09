@@ -2,6 +2,7 @@ import "server-only";
 import { getServiceClient } from "./supabase/service-client";
 import type { SessionSnapshot, ParticipantSessionSnapshot } from "./types/session";
 import type { SessionState } from "./state-machine";
+import { getEnv } from "./env";
 
 export type { SessionSnapshot, ParticipantSessionSnapshot };
 
@@ -29,6 +30,7 @@ export function toParticipantSnapshot(full: SessionSnapshot): ParticipantSession
     measurements: full.measurements,
     delivery: full.delivery,
     followup: full.followup,
+    deliveryMode: full.deliveryMode,
   };
 }
 
@@ -43,7 +45,7 @@ export async function loadSessionSnapshot(sessionId: string): Promise<SessionSna
 
   const { data: session } = await supabase
     .from("sessions")
-    .select("id, state, revision, pack_topic, created_at, withdrawn_at, park_reason, discovery_recovery_reason, pilot_label")
+    .select("id, state, revision, pack_topic, created_at, withdrawn_at, park_reason, discovery_recovery_reason, pilot_label, claim_kind_clarification_question")
     .eq("id", sessionId)
     .maybeSingle();
   if (!session) return null;
@@ -93,7 +95,9 @@ export async function loadSessionSnapshot(sessionId: string): Promise<SessionSna
       parkReason: session.park_reason,
       discoveryRecoveryReason: session.discovery_recovery_reason,
       pilotLabel: session.pilot_label,
+      claimKindClarificationQuestion: session.claim_kind_clarification_question,
     },
+    deliveryMode: getEnv().DELIVERY_MODE,
     context: context
       ? { situationCard: context.situation_card, goal: context.goal, decisionCue: context.decision_cue, freeText: context.free_text }
       : null,

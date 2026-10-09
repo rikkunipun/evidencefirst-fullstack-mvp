@@ -18,7 +18,16 @@ export interface SessionSnapshot {
      * surfaced so "Try a different decision" can carry it into the next
      * session's /participate link instead of silently dropping it. */
     pilotLabel?: string | null;
+    /** The one bounded, neutral clarification question (item 3), set only
+     * while state is assigned/pending_review/approved and the automatic
+     * classifier needs it. Fixed, generic text — participant-safe. */
+    claimKindClarificationQuestion?: string | null;
   };
+  /** Live value of DELIVERY_MODE (item 7) — governs which participant view
+   * renders for assigned/pending_review/approved, not a per-session DB
+   * field (sessions.delivery_mode is a separate, write-once audit
+   * snapshot of what was active at creation time). */
+  deliveryMode: "auto" | "manual";
   context: { situationCard: string; goal: string | null; decisionCue: string | null; freeText: string | null } | null;
   messages: { id: string; turnNumber: number; role: string; content: string; createdAt: string }[];
   latestExtraction: { fields: Record<string, string | null>; candidateDriver: string; shouldStop: boolean; stopReason: string | null } | null;

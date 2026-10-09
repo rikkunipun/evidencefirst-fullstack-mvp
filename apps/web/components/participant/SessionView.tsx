@@ -9,6 +9,7 @@ import { BaselineView } from "./BaselineView";
 import { CruxView } from "./CruxView";
 import { PreEvidenceView } from "./PreEvidenceView";
 import { WaitingView } from "./WaitingView";
+import { AutoDeliveryView } from "./AutoDeliveryView";
 import { ParkedView } from "./ParkedView";
 import { DeliveryView } from "./DeliveryView";
 import { PostMeasurementView } from "./PostMeasurementView";
@@ -62,6 +63,14 @@ export function SessionView({ sessionId, initialSnapshot }: { sessionId: string;
       case "assigned":
       case "pending_review":
       case "approved":
+        // Item 7: DELIVERY_MODE governs which view renders here — the old
+        // manual-review flow (WaitingView + admin approve) stays fully
+        // intact as the fallback. Item 9: pending_review/approved are
+        // included so an old waiting session resolves on resume instead
+        // of sitting there under auto mode.
+        if (snapshot.deliveryMode === "auto") {
+          return <AutoDeliveryView sessionId={sessionId} snapshot={snapshot} onAdvance={refresh} />;
+        }
         return <WaitingView onAdvance={refresh} />;
       case "delivered":
         return <DeliveryView sessionId={sessionId} snapshot={snapshot} onAdvance={refresh} />;
