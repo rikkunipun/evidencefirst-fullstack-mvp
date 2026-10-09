@@ -5,7 +5,7 @@ import { z } from "zod";
  * Field names are snake_case because this exact shape is sent to the model
  * via `zodTextFormat` and becomes the JSON schema the model must fill in.
  */
-export const PROMPT_VERSION = "v1";
+export const PROMPT_VERSION = "v2";
 
 export const FIELD_NAMES = [
   "chosen_action",
@@ -42,6 +42,11 @@ export const candidateDriverSchema = z.enum([
   "preference_value",
   "behavior_gap",
   "unclear",
+  // Added v2: a story mentions enjoyment/preference AND an outcome
+  // expectation, and it isn't yet clear which one actually drove the
+  // choice. Backward compatible — an additive enum value, old rows using
+  // any prior value still parse. See MIXED_DRIVER_QUESTION.
+  "mixed_uncertain",
 ]);
 
 export const stopReasonSchema = z

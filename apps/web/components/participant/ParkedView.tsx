@@ -7,7 +7,7 @@ export function ParkedView({ snapshot }: { snapshot: ParticipantSessionSnapshot 
     <Card className="flex flex-col gap-4">
       <h1 className="text-lg font-semibold">Thank you for sharing this</h1>
       <p className="text-sm text-[var(--ef-ink)]">
-        {snapshot.session.parkReason ?? "This particular case doesn't fit what this study can evaluate right now."}
+        {snapshot.session.parkReason?.trim() ? snapshot.session.parkReason : "This particular case doesn't fit what this study can evaluate right now."}
       </p>
       <p className="text-sm text-[var(--ef-muted)]">
         This isn&apos;t a judgment of your decision — it just means we don&apos;t have a way to check this specific thing yet. Your response has been recorded for the

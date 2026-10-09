@@ -43,7 +43,7 @@ export async function loadSessionSnapshot(sessionId: string): Promise<SessionSna
 
   const { data: session } = await supabase
     .from("sessions")
-    .select("id, state, revision, pack_topic, created_at, withdrawn_at, park_reason")
+    .select("id, state, revision, pack_topic, created_at, withdrawn_at, park_reason, discovery_recovery_reason")
     .eq("id", sessionId)
     .maybeSingle();
   if (!session) return null;
@@ -85,6 +85,7 @@ export async function loadSessionSnapshot(sessionId: string): Promise<SessionSna
       createdAt: session.created_at,
       withdrawnAt: session.withdrawn_at,
       parkReason: session.park_reason,
+      discoveryRecoveryReason: session.discovery_recovery_reason,
     },
     context: context
       ? { situationCard: context.situation_card, goal: context.goal, decisionCue: context.decision_cue, freeText: context.free_text }

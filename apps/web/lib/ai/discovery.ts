@@ -3,8 +3,8 @@ import OpenAI from "openai";
 import { zodTextFormat } from "openai/helpers/zod";
 import { getEnv } from "../env";
 import { discoveryTurnSchema, type DiscoveryTurn, type FieldName } from "../zod/discovery";
-import { DISCOVERY_SYSTEM_PROMPT, PROMPT_VERSION } from "./prompt.v1";
-import { enforceProvenance, neutralFallbackTurn } from "./discovery-pure";
+import { DISCOVERY_SYSTEM_PROMPT, PROMPT_VERSION } from "./prompt.v2";
+import { enforceProvenance, neutralFallbackTurn, type FieldValidationDiagnostic } from "./discovery-pure";
 
 let openaiClient: OpenAI | null = null;
 function getClient(): OpenAI {
@@ -39,6 +39,9 @@ export interface DiscoveryTurnResult {
   requestId: string | null;
   latencyMs: number;
   errorMessage: string | null;
+  /** Null when this result is a fallback (no model call succeeded) — there
+   * is nothing to diagnose. Researcher-only; structural, no transcript text. */
+  validationDiagnostics: FieldValidationDiagnostic[] | null;
 }
 
 function buildContextBlock(input: RunDiscoveryTurnInput): string {
@@ -75,6 +78,7 @@ export async function runDiscoveryTurn(input: RunDiscoveryTurnInput): Promise<Di
       requestId: null,
       latencyMs: 0,
       errorMessage: null,
+      validationDiagnostics: null,
     };
   }
 
@@ -99,7 +103,7 @@ export async function runDiscoveryTurn(input: RunDiscoveryTurnInput): Promise<Di
         continue;
       }
 
-      const safe = enforceProvenance(parsed, validParticipantMessageIds);
+      const { turn: safe, diagnostics } = enforceProvenance(parsed, validParticipantMessageIds);
       return {
         turn: safe,
         fallback: false,
@@ -108,6 +112,7 @@ export async function runDiscoveryTurn(input: RunDiscoveryTurnInput): Promise<Di
         requestId: response.id ?? null,
         latencyMs: Date.now() - start,
         errorMessage: null,
+        validationDiagnostics: diagnostics,
       };
     } catch (err) {
       lastError = err instanceof Error ? err.message : String(err);
@@ -125,5 +130,6 @@ export async function runDiscoveryTurn(input: RunDiscoveryTurnInput): Promise<Di
     requestId: null,
     latencyMs: Date.now() - start,
     errorMessage: lastError,
+    validationDiagnostics: null,
   };
 }

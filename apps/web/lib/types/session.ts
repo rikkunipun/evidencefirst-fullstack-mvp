@@ -2,7 +2,19 @@ import type { SessionState } from "../state-machine";
 
 /** Client-safe copy of the snapshot shape (no "server-only" import chain). */
 export interface SessionSnapshot {
-  session: { id: string; state: SessionState; revision: number; packTopic: string | null; createdAt: string; withdrawnAt: string | null; parkReason?: string | null };
+  session: {
+    id: string;
+    state: SessionState;
+    revision: number;
+    packTopic: string | null;
+    createdAt: string;
+    withdrawnAt: string | null;
+    parkReason?: string | null;
+    /** Set only when a bounded repair for a validation failure also failed.
+     * Distinct from parkReason — state stays 'discovery'. Participant-safe
+     * (fixed, pre-approved wording; no transcript or diagnostics). */
+    discoveryRecoveryReason?: string | null;
+  };
   context: { situationCard: string; goal: string | null; decisionCue: string | null; freeText: string | null } | null;
   messages: { id: string; turnNumber: number; role: string; content: string; createdAt: string }[];
   latestExtraction: { fields: Record<string, string | null>; candidateDriver: string; shouldStop: boolean; stopReason: string | null } | null;

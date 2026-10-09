@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { enforceProvenance, neutralFallbackTurn } from "../../lib/ai/discovery-pure";
+import { enforceProvenance, neutralFallbackTurn, hasCoreFields, isValidationFailure } from "../../lib/ai/discovery-pure";
 import type { DiscoveryTurn } from "../../lib/zod/discovery";
 
 const EMPTY_EXTRACTION = {
@@ -40,13 +40,13 @@ describe("enforceProvenance", () => {
       extraction: { ...EMPTY_EXTRACTION, chosen_action: "skipping the gym" },
       field_evidence: { ...EMPTY_EVIDENCE, chosen_action: ["msg-1"] },
     });
-    const result = enforceProvenance(turn, new Set(["msg-1", "msg-2"]));
+    const { turn: result } = enforceProvenance(turn, new Set(["msg-1", "msg-2"]));
     expect(result.extraction.chosen_action).toBe("skipping the gym");
   });
 
   it("nulls a field with zero citations even if the extracted value looks plausible", () => {
     const turn = baseTurn({ extraction: { ...EMPTY_EXTRACTION, chosen_action: "invented answer" }, field_evidence: { ...EMPTY_EVIDENCE } });
-    const result = enforceProvenance(turn, new Set(["msg-1"]));
+    const { turn: result } = enforceProvenance(turn, new Set(["msg-1"]));
     expect(result.extraction.chosen_action).toBeNull();
   });
 
@@ -55,7 +55,7 @@ describe("enforceProvenance", () => {
       extraction: { ...EMPTY_EXTRACTION, chosen_action: "skipping the gym" },
       field_evidence: { ...EMPTY_EVIDENCE, chosen_action: ["msg-does-not-exist"] },
     });
-    const result = enforceProvenance(turn, new Set(["msg-1", "msg-2"]));
+    const { turn: result } = enforceProvenance(turn, new Set(["msg-1", "msg-2"]));
     expect(result.extraction.chosen_action).toBeNull();
     expect(result.field_evidence.chosen_action).toEqual([]);
   });
@@ -65,14 +65,105 @@ describe("enforceProvenance", () => {
       extraction: { ...EMPTY_EXTRACTION, actual_consequence: "lost strength" },
       field_evidence: { ...EMPTY_EVIDENCE, actual_consequence: ["msg-1", "msg-fabricated"] },
     });
-    const result = enforceProvenance(turn, new Set(["msg-1"]));
+    const { turn: result } = enforceProvenance(turn, new Set(["msg-1"]));
     expect(result.extraction.actual_consequence).toBeNull();
   });
 
   it("leaves an already-null field alone regardless of its (empty) evidence array", () => {
     const turn = baseTurn();
-    const result = enforceProvenance(turn, new Set(["msg-1"]));
+    const { turn: result } = enforceProvenance(turn, new Set(["msg-1"]));
     expect(result.extraction).toEqual(EMPTY_EXTRACTION);
+  });
+
+  // Regression for the 2026-10-09 confirmed root cause: the model reliably
+  // cites `"<id>: \"<quoted snippet>\""` rather than a bare ID. A real,
+  // valid ID embedded in that string must still count — this is a format
+  // tolerance, not a provenance bypass: a citation with NO valid ID in it
+  // (or a different session's ID) must still be rejected.
+  it("resolves a citation that wraps a real, valid message ID in descriptive text", () => {
+    const id = "3fa85f64-5717-4562-b3fc-2c963f66afa6";
+    const turn = baseTurn({
+      extraction: { ...EMPTY_EXTRACTION, chosen_action: "taking the bus" },
+      field_evidence: { ...EMPTY_EVIDENCE, chosen_action: [`${id}: "Last Monday I chose the bus"`] },
+    });
+    const { turn: result, diagnostics } = enforceProvenance(turn, new Set([id]));
+    expect(result.extraction.chosen_action).toBe("taking the bus");
+    expect(result.field_evidence.chosen_action).toEqual([id]);
+    expect(diagnostics.find((d) => d.field === "chosen_action")?.rejected).toBe(false);
+  });
+
+  it("still rejects a wrapped citation whose embedded ID is not in the valid set", () => {
+    const realId = "3fa85f64-5717-4562-b3fc-2c963f66afa6";
+    const fabricatedId = "00000000-0000-4000-8000-000000000000";
+    const turn = baseTurn({
+      extraction: { ...EMPTY_EXTRACTION, chosen_action: "taking the bus" },
+      field_evidence: { ...EMPTY_EVIDENCE, chosen_action: [`${fabricatedId}: "Last Monday I chose the bus"`] },
+    });
+    const { turn: result, diagnostics } = enforceProvenance(turn, new Set([realId]));
+    expect(result.extraction.chosen_action).toBeNull();
+    expect(diagnostics.find((d) => d.field === "chosen_action")?.rejected).toBe(true);
+  });
+
+  it("reports structural per-field diagnostics with counts and no transcript text", () => {
+    const turn = baseTurn({
+      extraction: { ...EMPTY_EXTRACTION, chosen_action: "skipping the gym", rejected_alternative: "invented" },
+      field_evidence: { ...EMPTY_EVIDENCE, chosen_action: ["msg-1"], rejected_alternative: ["msg-fabricated"] },
+    });
+    const { diagnostics } = enforceProvenance(turn, new Set(["msg-1"]));
+    const chosen = diagnostics.find((d) => d.field === "chosen_action");
+    const rejected = diagnostics.find((d) => d.field === "rejected_alternative");
+    expect(chosen).toMatchObject({ hadValue: true, citationCount: 1, resolvedCitationCount: 1, rejected: false });
+    expect(rejected).toMatchObject({ hadValue: true, citationCount: 1, resolvedCitationCount: 0, rejected: true });
+    expect(JSON.stringify(diagnostics)).not.toContain("invented");
+  });
+});
+
+describe("required regression: candidate_ready + provenance-nulled core field never silently parks", () => {
+  it("routes to repair/recovery, not confirm or park, when the model says ready but citations don't resolve", () => {
+    // Shaped exactly like the live-model repro on the reviewer's failing
+    // case: should_stop=true, stop_reason="candidate_ready", but every
+    // citation is fabricated (does not resolve to a real participant
+    // message), so provenance correctly nulls the core fields.
+    const rawTurn = baseTurn({
+      should_stop: true,
+      stop_reason: "candidate_ready",
+      extraction: { ...EMPTY_EXTRACTION, chosen_action: "taking the bus", rejected_alternative: "walking", expected_outcome: "would not count as exercise" },
+      field_evidence: {
+        ...EMPTY_EVIDENCE,
+        chosen_action: ["msg-fabricated"],
+        rejected_alternative: ["msg-fabricated"],
+        expected_outcome: ["msg-fabricated"],
+      },
+    });
+    const { turn: safeTurn } = enforceProvenance(rawTurn, new Set(["msg-1"]));
+    const hasCore = hasCoreFields(safeTurn.extraction);
+    expect(hasCore).toBe(false); // confirms the nulling actually happened
+    expect(isValidationFailure(safeTurn, hasCore)).toBe(true); // must NOT fall through to a blank park
+  });
+
+  it("does not flag a validation failure for a genuine, well-cited preference stop", () => {
+    const id = "3fa85f64-5717-4562-b3fc-2c963f66afa6";
+    const turn = baseTurn({
+      should_stop: true,
+      stop_reason: "no_stable_candidate",
+      candidate_driver: "preference_value",
+      extraction: { ...EMPTY_EXTRACTION, chosen_action: "diagrams" },
+      field_evidence: { ...EMPTY_EVIDENCE, chosen_action: [id] },
+    });
+    const { turn: safeTurn } = enforceProvenance(turn, new Set([id]));
+    expect(isValidationFailure(safeTurn, hasCoreFields(safeTurn.extraction))).toBe(false);
+  });
+
+  it("does not flag a validation failure once citations resolve and core fields are genuinely present", () => {
+    const id = "3fa85f64-5717-4562-b3fc-2c963f66afa6";
+    const turn = baseTurn({
+      should_stop: true,
+      stop_reason: "candidate_ready",
+      extraction: { ...EMPTY_EXTRACTION, chosen_action: "bus", rejected_alternative: "walking", expected_outcome: "would not count" },
+      field_evidence: { ...EMPTY_EVIDENCE, chosen_action: [id], rejected_alternative: [id], expected_outcome: [id] },
+    });
+    const { turn: safeTurn } = enforceProvenance(turn, new Set([id]));
+    expect(isValidationFailure(safeTurn, hasCoreFields(safeTurn.extraction))).toBe(false);
   });
 });
 
