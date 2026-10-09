@@ -9,8 +9,17 @@ import {
   RESUME_COOKIE_MAX_AGE_SECONDS,
 } from "@/lib/capability";
 import { recordAuditEvent } from "@/lib/audit";
+import { checkRateLimit, clientIpFrom } from "@/lib/rate-limit";
+
+const SESSION_CREATE_LIMIT = 10;
+const SESSION_CREATE_WINDOW_MS = 10 * 60 * 1000;
 
 export async function POST(req: NextRequest) {
+  const rate = checkRateLimit(`session-create:${clientIpFrom(req)}`, SESSION_CREATE_LIMIT, SESSION_CREATE_WINDOW_MS);
+  if (!rate.allowed) {
+    return NextResponse.json({ error: "rate_limited", retryAfterMs: rate.retryAfterMs }, { status: 429 });
+  }
+
   const json = await req.json().catch(() => null);
   const parsed = createSessionSchema.safeParse(json);
   if (!parsed.success) {

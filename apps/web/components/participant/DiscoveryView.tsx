@@ -42,10 +42,13 @@ export function DiscoveryView({ sessionId, snapshot, onAdvance }: { sessionId: s
       attemptRef.current = null;
       await onAdvance();
     } catch (err) {
+      const status = err instanceof Error ? (err as Error & { status?: number }).status : undefined;
       setError(
         err instanceof ApiTimeoutError
           ? "That's taking longer than expected. Your answer wasn't lost — press Retry to try again."
-          : "Something went wrong sending your answer. Your answer wasn't lost — press Retry to try again.",
+          : status === 429
+            ? "You're sending answers faster than we can keep up with — please wait a moment and press Retry."
+            : "Something went wrong sending your answer. Your answer wasn't lost — press Retry to try again.",
       );
     } finally {
       setSubmitting(false);

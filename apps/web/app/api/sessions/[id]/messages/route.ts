@@ -8,6 +8,7 @@ import { runDiscoveryTurn, type DiscoveryMessageForModel } from "@/lib/ai/discov
 import { generateBeliefWording } from "@/lib/belief-wording";
 import { DISCOVERY_QUESTION_BUDGET } from "@/lib/constants";
 import { recordAuditEvent } from "@/lib/audit";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 const STOP_REASON_MESSAGES: Record<string, string> = {
   question_budget_exhausted: "We weren't able to pin down a clear, checkable expectation in the time we had for this.",
@@ -16,10 +17,21 @@ const STOP_REASON_MESSAGES: Record<string, string> = {
   candidate_ready: "",
 };
 
+// Generous enough for a real interview (max 8 real questions) plus
+// legitimate retries, tight enough to stop a runaway loop from repeatedly
+// hitting the model.
+const DISCOVERY_TURN_LIMIT = 30;
+const DISCOVERY_TURN_WINDOW_MS = 10 * 60 * 1000;
+
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const turnStart = Date.now();
   const { id } = await params;
   if (!(await requireSessionAccess(id))) return NextResponse.json({ error: "not_found" }, { status: 404 });
+
+  const rate = checkRateLimit(`discovery-turn:${id}`, DISCOVERY_TURN_LIMIT, DISCOVERY_TURN_WINDOW_MS);
+  if (!rate.allowed) {
+    return NextResponse.json({ error: "rate_limited", retryAfterMs: rate.retryAfterMs }, { status: 429 });
+  }
 
   const json = await req.json().catch(() => null);
   const parsed = postMessageSchema.safeParse(json);
