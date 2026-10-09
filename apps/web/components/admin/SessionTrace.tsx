@@ -78,8 +78,16 @@ export function SessionTrace({ sessionId, snapshot: initial, auditEvents: initia
         contentHash: snapshot.draft.contentHash,
       });
       await refresh();
-    } catch {
-      setError("Failed to record approval.");
+    } catch (err) {
+      // A double-click (or two reviewers racing) can lose to the single
+      // insert that's actually allowed to succeed — that's not a failure,
+      // it just means the session is already approved. Refresh instead
+      // of showing an error.
+      if (err instanceof Error && (err as Error & { status?: number }).status === 409) {
+        await refresh();
+      } else {
+        setError("Failed to record approval.");
+      }
     } finally {
       setBusy(false);
     }

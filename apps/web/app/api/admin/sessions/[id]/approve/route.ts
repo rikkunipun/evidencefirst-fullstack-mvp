@@ -73,10 +73,24 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     template_version: draft.template_version,
     content_hash: draft.content_hash,
   });
-  if (deliveryError) return NextResponse.json({ error: "server_error" }, { status: 500 });
+  if (deliveryError) {
+    // deliveries.session_id is UNIQUE, so a true concurrent double-click
+    // (two requests both reading state=pending_review before either
+    // writes) can race to this insert, but only one can ever succeed —
+    // the loser hits a unique-violation (23505), not a duplicate delivery.
+    if (deliveryError.code === "23505") {
+      return NextResponse.json({ error: "already_approved", details: "this session was already approved and delivered" }, { status: 409 });
+    }
+    return NextResponse.json({ error: "server_error" }, { status: 500 });
+  }
 
   const t = await transitionSession(supabase, id, "pending_review", session.revision, ["approved", "delivered"]);
-  if (!t.ok) return NextResponse.json({ error: "server_error", reason: t.reason }, { status: 500 });
+  if (!t.ok) {
+    if (t.reason === "stale_revision") {
+      return NextResponse.json({ error: "already_approved", details: "this session was already approved and delivered" }, { status: 409 });
+    }
+    return NextResponse.json({ error: "server_error", reason: t.reason }, { status: 500 });
+  }
 
   await recordAuditEvent({ actorType: "researcher", actorId: researcher.email, action: "approved_and_delivered", entityType: "sessions", entityId: id, after: { disposition: body.disposition } });
 
