@@ -1,6 +1,33 @@
 # Build status — fullstack-mvp
 
-Last updated: 2026-10-08 (continuous, see git log for exact times).
+Last updated: 2026-10-09 (continuous, see git log for exact times).
+
+## ✅ 2026-10-09 pre-pilot P0/P1 repair pass (tag `checkpoint-pre-repair` marks the state before this)
+
+Source: `EvidenceFirst_Fullstack_Live_Audit_Oct9.md` + `EvidenceFirst_Fullstack_QA_Matrix_Oct9.json`. Worked the P0 list only, in order, one commit per item, then P1 since time remained. Pilots at 3:00 PM IST; stopped new work at 2:30 PM IST as instructed.
+
+**P0 (all 6 done):**
+1. Preserve typed input — `/participate` no longer drops a typed free-text story when a card is also selected; the messages route inserts that story as the real first turn instead of silently discarding it. Verified live: the model built directly on the typed story instead of re-asking.
+2. Pre-approval payload leak — new `ParticipantSessionSnapshot` DTO (`lib/types/session.ts`/`lib/session-snapshot.ts`) structurally omits `assignment`, `draft`, `approval`, `latestExtraction` from every participant response/prop. Verified live on production: those keys are absent, not null.
+3. `assign_condition` privileges — revoked PUBLIC/anon/authenticated EXECUTE, pinned `search_path`. Verified against the real database with `has_function_privilege`: only `postgres`/`service_role` can call it.
+4. Thinking state / timeout+retry / latency logging / park wording / "Try a different decision" — 30s bounded timeout with a visible spinner and a Retry that never loses the typed answer; `[discovery-turn-latency]` logged server-side on every turn; parked/refused screens got a real exit path; the checkable-gate park message no longer implies a blanket inability to discuss the topic (reserves "safely discuss" for the actual safety gate).
+5. Evidence usability — delivery HTML (with real clickable source links + locators) was already being generated and stored but never selected or rendered; now it is. Follow-up link is a real `<a>` plus a working copy button.
+6. `is_test`/`test_run_id`, export defaults, 18+ consent, no voice claims — migration 0011; the audit's 7 fixture sessions + its reversal run marked test; 5 *additional* pre-existing sessions found and marked too (since nothing before the 3 PM pilot start can be real participant data by definition) — verified 0 real sessions remained going into the pilots. Export defaults to excluding test rows. Removed the two remaining "speak"/"transcribed" claims; added an explicit 18+ line to both the landing page and the actual consent checkbox.
+
+**P1 (all 3 done, time permitted):**
+- Idempotency key (`client_token`) on discovery answer submission — a retried request after a timeout can't create a duplicate turn or a duplicate model call. Verified live with an identical-token retry.
+- Friendlier double-click guard on approval — `deliveries.session_id` was already UNIQUE; a true concurrent double-click now gets a clean 409 `already_approved` instead of a 500. Verified with a real concurrent `Promise.all` double-approve: `[200, 409]`, exactly one delivery row.
+- Basic in-memory rate limiting on session creation (10/10min/IP) and discovery turns (30/10min/session) — documented as per-instance, not distributed-grade. Verified live: 11th request in the window returns 429.
+
+**Deferred** (listed with reasoning in `docs/deferred.md`): semantic review taxonomy, multi-session resume, expanded receipts, staging database, full race-condition suite, entailment-grade provenance, classifier-failure routing, service-failure-vs-parking distinction, explicit spend limits, review-state persistence across refresh.
+
+**Final verification:**
+- 61 Vitest + 13 deterministic Playwright passing (local and production).
+- `tsc --noEmit` clean.
+- `npm run lint`: fixed all 12 errors the audit found (unescaped apostrophes, one `require()` import) down to **0 errors, 0 warnings**.
+- `next build` (Turbopack) clean, 29 routes.
+- Redeployed to **https://evidencefirst-fullstack-mvp.vercel.app**; re-verified fresh (no prior cookies): consent/18+ line present, no voice claims, typed-story fix live, participant-DTO leak fix live (keys absent), idempotency dedup live, zero secrets across every HTML page and JS chunk actually served.
+- Did not rerun the full live-model e2e suite against production (per instruction) — verified the specific fixes above directly instead.
 
 ## ✅ Resolved — Supabase keys
 
