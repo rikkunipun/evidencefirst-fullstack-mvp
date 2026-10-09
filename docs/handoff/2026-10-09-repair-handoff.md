@@ -2,11 +2,66 @@
 
 Status at last update: Tier 1 (items 1–6) complete, verified, and
 **deployed to production** at commit `7ac9114` (deploy commit
-`55c50f7`). Tier 2 (items 7–11) complete and verified locally — all five
-have real, tested, committed work — but **not yet deployed**; deploy
-requires a separate explicit "deploy" per the task's gate. Tier 3 not
-started — see `docs/deferred.md`. This document is updated in place as
-work continues; the final version is the authoritative handoff.
+`55c50f7`). Tier 2 (items 7–11) complete, and now **verified end-to-end
+against the real DB and real model** (see "Full local Tier 2 journey
+verification" below) — but **not yet deployed**; deploy requires a
+separate explicit "deploy" per the task's gate, and should target the
+**current commit, not `6e9899b`** — the journey run found and fixed a
+real bug (see below) after that commit. Tier 3 not started — see
+`docs/deferred.md`. This document is updated in place as work continues;
+the final version is the authoritative handoff.
+
+## Full local Tier 2 journey verification (2026-10-09, after `6e9899b`)
+
+Ran the complete participant+researcher journey against the real
+Supabase DB and real OpenAI model via `npm run dev` + Playwright (not
+mocked), per explicit instruction. Every session marked `is_test=true`
+with a `test_run_id` from creation; all test data and the dedicated
+disposable test-researcher auth account were cleaned up afterward —
+verified zero leftovers.
+
+**Found and fixed a real bug**: `legacyDisposition()` passed
+`evidenceRelation: "supports"` straight through to the legacy
+`disposition` column, but the DB's `approvals_disposition_check`
+constraint only accepts `"supported"` — every real "supports" approval
+would have 500'd in production. The unit suite didn't exist for this
+function before this run; a unit test now enumerates every
+(briefAccurate, evidenceRelation) combination against the constraint's
+allowed values (`lib/approval-disposition.ts`,
+`tests/unit/approval-disposition.test.ts`).
+
+**Also found**: the OpenAI client had no explicit timeout — the SDK's
+~10 minute default let one real call hang for ~11 minutes during this
+run. Fixed: `timeout: 20_000` on both OpenAI clients (`discovery.ts`,
+`crux-classifier.ts`).
+
+**Results, step by step** (fixed `eligible-activity-flow.spec.ts` — no
+longer rotates the real admin's password; new `review-outcomes.spec.ts`):
+
+| Step | Result |
+|---|---|
+| Participant discovery (real model) | Pass — reaches confirmation |
+| Two-field confirmation (item 7) | Pass — decision narrative + empirical claim confirmed separately |
+| Eligibility (all 6 gates) | Pass — eligible |
+| Baseline freeze | Pass |
+| Crux (reason, confirm, hypothetical) | Pass — carries to pre-evidence |
+| Pre-evidence + assignment | Pass — condition assigned |
+| Researcher login (dedicated test account) | Pass |
+| Draft generation | Pass — 5 claims |
+| Approval, two required selects, `supports`/accurate | Pass (after the bug fix above) — delivered |
+| Delivery has clickable sources + locators | Pass — claim-to-source map populated |
+| Post-evidence score + ack | Pass |
+| Follow-up link: not-yet-due + early-submit refused | Pass |
+| Follow-up link reissue after refresh (item 10) | Pass — old token 404s, new token works, due date unchanged |
+| Receipt (frozen belief, both scores) | Pass |
+| Resume (fresh GET reproduces state) | Pass |
+| `evidenceRelation="outside_scope"` | Pass — terminal refusal, no delivery |
+| `briefAccurate=false` | Pass — returns to `assigned` (not refused), fresh draft, then delivers |
+
+One transient login flake during iteration (a brand-new test account's
+first sign-in attempt failed once, succeeded on immediate retry) —
+not reproduced on the second attempt; not an application bug, no fix
+applied beyond noting it.
 
 ## Tier 1 production deployment
 
