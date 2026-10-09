@@ -31,26 +31,36 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (session.state !== "context" && session.state !== "discovery") {
     return NextResponse.json({ error: "invalid_state", state: session.state }, { status: 409 });
   }
-  if (content === null) {
-    const { data: existing } = await supabase.from("messages").select("id").eq("session_id", id).limit(1);
-    if (existing && existing.length > 0) {
-      return NextResponse.json({ error: "invalid_request", details: "content required after the first turn" }, { status: 400 });
-    }
-  }
-
   const { data: existingMessages } = await supabase
     .from("messages")
     .select("id, turn_number, role, content")
     .eq("session_id", id)
     .order("turn_number", { ascending: true });
   const messages = existingMessages ?? [];
+
+  if (content === null && messages.length > 0) {
+    return NextResponse.json({ error: "invalid_request", details: "content required after the first turn" }, { status: 400 });
+  }
+
   let nextTurnNumber = messages.length > 0 ? messages[messages.length - 1].turn_number + 1 : 1;
 
+  // On kickoff (content === null), a participant may have already typed a
+  // full story under a situation card on /participate. Use that story as
+  // the first real turn instead of silently discarding it and asking a
+  // generic opening question the participant already answered.
+  let effectiveContent = content;
+  if (content === null && messages.length === 0) {
+    const { data: contextRow } = await supabase.from("context_answers").select("free_text").eq("session_id", id).maybeSingle();
+    if (contextRow?.free_text?.trim()) {
+      effectiveContent = contextRow.free_text.trim();
+    }
+  }
+
   let participantMessage: { id: string; content: string } | null = null;
-  if (content !== null) {
+  if (effectiveContent !== null) {
     const { data: inserted, error } = await supabase
       .from("messages")
-      .insert({ session_id: id, turn_number: nextTurnNumber, role: "participant", input_mode: inputMode, content })
+      .insert({ session_id: id, turn_number: nextTurnNumber, role: "participant", input_mode: effectiveContent === content ? inputMode : "text", content: effectiveContent })
       .select("id, content")
       .single();
     if (error) return NextResponse.json({ error: "server_error" }, { status: 500 });

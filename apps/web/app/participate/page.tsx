@@ -24,7 +24,7 @@ export default function ParticipatePage() {
   const cues = situationCard ? DECISION_CUES[situationCard] ?? [] : [];
   const visibleCues = showMoreCues ? cues : cues.slice(0, 5);
 
-  async function submit(useFreeText: boolean) {
+  async function submit() {
     setSubmitting(true);
     setError(null);
     try {
@@ -35,8 +35,10 @@ export default function ParticipatePage() {
           consentVersion: "v1",
           situationCard,
           goal: goal.trim() || null,
-          decisionCueId: useFreeText ? null : decisionCueId,
-          freeText: useFreeText ? freeText.trim() || null : null,
+          // Both are preserved: a participant may pick a card AND type their
+          // own story underneath it. Neither overwrites the other.
+          decisionCueId: decisionCueId,
+          freeText: freeText.trim() || null,
         }),
       });
       if (!res.ok) throw new Error("request_failed");
@@ -166,7 +168,7 @@ export default function ParticipatePage() {
             Back
           </Button>
           <Button
-            onClick={() => submit(!decisionCueId && freeText.trim().length > 0)}
+            onClick={() => submit()}
             disabled={submitting || (!decisionCueId && freeText.trim().length === 0)}
           >
             {submitting ? "Starting…" : "Start"}
