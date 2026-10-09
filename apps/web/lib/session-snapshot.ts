@@ -45,7 +45,9 @@ export async function loadSessionSnapshot(sessionId: string): Promise<SessionSna
 
   const { data: session } = await supabase
     .from("sessions")
-    .select("id, state, revision, pack_topic, created_at, withdrawn_at, park_reason, discovery_recovery_reason, pilot_label, claim_kind_clarification_question")
+    .select(
+      "id, state, revision, pack_topic, created_at, withdrawn_at, park_reason, discovery_recovery_reason, pilot_label, claim_kind_clarification_question, researcher_flagged, researcher_flag_note",
+    )
     .eq("id", sessionId)
     .maybeSingle();
   if (!session) return null;
@@ -81,8 +83,13 @@ export async function loadSessionSnapshot(sessionId: string): Promise<SessionSna
   const latestConfirmation = confirmations?.[0] ?? null;
   const latestDraftId = draft?.[0]?.id ?? null;
   const { data: approval } = latestDraftId
-    ? await supabase.from("approvals").select("disposition, approved_at").eq("draft_revision_id", latestDraftId).order("approved_at", { ascending: false }).limit(1)
-    : { data: [] as { disposition: string; approved_at: string }[] };
+    ? await supabase
+        .from("approvals")
+        .select("disposition, approved_at, is_system, evidence_relation, policy_version, pack_version, check_results")
+        .eq("draft_revision_id", latestDraftId)
+        .order("approved_at", { ascending: false })
+        .limit(1)
+    : { data: [] as { disposition: string; approved_at: string; is_system: boolean; evidence_relation: string | null; policy_version: string | null; pack_version: string | null; check_results: Record<string, unknown> | null }[] };
 
   return {
     session: {
@@ -96,6 +103,8 @@ export async function loadSessionSnapshot(sessionId: string): Promise<SessionSna
       discoveryRecoveryReason: session.discovery_recovery_reason,
       pilotLabel: session.pilot_label,
       claimKindClarificationQuestion: session.claim_kind_clarification_question,
+      researcherFlagged: session.researcher_flagged,
+      researcherFlagNote: session.researcher_flag_note,
     },
     deliveryMode: getEnv().DELIVERY_MODE,
     context: context
@@ -149,7 +158,17 @@ export async function loadSessionSnapshot(sessionId: string): Promise<SessionSna
     measurements: (measurements ?? []).map((m) => ({ phase: m.phase, score: m.score, explanation: m.explanation, recordedAt: m.recorded_at })),
     assignment: assignment ? { condition: assignment.condition, packId: assignment.pack_id, packVersion: assignment.pack_version } : null,
     draft: draft?.[0] ? { id: draft[0].id, claimOrder: draft[0].claim_order, renderedText: draft[0].rendered_text, wordCount: draft[0].word_count, contentHash: draft[0].content_hash } : null,
-    approval: approval?.[0] ? { disposition: approval[0].disposition, approvedAt: approval[0].approved_at } : null,
+    approval: approval?.[0]
+      ? {
+          disposition: approval[0].disposition,
+          approvedAt: approval[0].approved_at,
+          isSystem: approval[0].is_system,
+          evidenceRelation: approval[0].evidence_relation,
+          policyVersion: approval[0].policy_version,
+          packVersion: approval[0].pack_version,
+          checkResults: approval[0].check_results,
+        }
+      : null,
     delivery: delivery
       ? {
           exactText: delivery.exact_text,

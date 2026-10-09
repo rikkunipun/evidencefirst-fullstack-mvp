@@ -22,6 +22,12 @@ export interface SessionSnapshot {
      * while state is assigned/pending_review/approved and the automatic
      * classifier needs it. Fixed, generic text — participant-safe. */
     claimKindClarificationQuestion?: string | null;
+    /** Item 10: researcher-initiated post-hoc flag — admin-only in
+     * practice (participant snapshot doesn't render it anywhere), but not
+     * excluded from ParticipantSessionSnapshot's type since it carries no
+     * sensitive content on its own. */
+    researcherFlagged?: boolean;
+    researcherFlagNote?: string | null;
   };
   /** Live value of DELIVERY_MODE (item 7) — governs which participant view
    * renders for assigned/pending_review/approved, not a per-session DB
@@ -53,7 +59,17 @@ export interface SessionSnapshot {
   measurements: { phase: string; score: number; explanation: string | null; recordedAt: string }[];
   assignment: { condition: "fixed" | "personalized"; packId: string; packVersion: string } | null;
   draft: { id: string; claimOrder: string[]; renderedText: string; wordCount: number; contentHash: string } | null;
-  approval: { disposition: string; approvedAt: string } | null;
+  approval: {
+    disposition: string;
+    approvedAt: string;
+    /** Item 6/10: an automatic decision vs a human one is structurally
+     * distinct, never confusable — surfaced for researcher inspection. */
+    isSystem: boolean;
+    evidenceRelation: string | null;
+    policyVersion: string | null;
+    packVersion: string | null;
+    checkResults: Record<string, unknown> | null;
+  } | null;
   delivery: {
     exactText: string;
     exactHtml: string;

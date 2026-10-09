@@ -49,11 +49,23 @@ export function SessionTrace({ sessionId, snapshot: initial, auditEvents: initia
   const [scopeJustification, setScopeJustification] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [flagNote, setFlagNote] = useState(snapshot.session.researcherFlagNote ?? "");
+  const [flagBusy, setFlagBusy] = useState(false);
 
   async function refresh() {
     const latest = await apiGet<SessionSnapshot & { auditEvents: AuditEvent[] }>(`/api/admin/sessions/${sessionId}`);
     setSnapshot(latest);
     setAuditEvents(latest.auditEvents);
+  }
+
+  async function toggleFlag(flagged: boolean) {
+    setFlagBusy(true);
+    try {
+      await apiPost(`/api/admin/sessions/${sessionId}/flag`, { flagged, note: flagNote.trim() || null });
+      await refresh();
+    } finally {
+      setFlagBusy(false);
+    }
   }
 
   async function generateDraft() {
@@ -241,12 +253,43 @@ export function SessionTrace({ sessionId, snapshot: initial, auditEvents: initia
         </Section>
       )}
 
+      {snapshot.approval?.isSystem && (
+        <Section title="9b. Automatic decision (item 6/10 — inspection only, no human reviewer)">
+          <div className="flex flex-col gap-1 text-sm">
+            <p>
+              <span className="font-medium">Evidence relation:</span> {snapshot.approval.evidenceRelation ?? "—"}
+            </p>
+            <p>
+              <span className="font-medium">Policy version:</span> {snapshot.approval.policyVersion ?? "—"} · <span className="font-medium">Pack version:</span>{" "}
+              {snapshot.approval.packVersion ?? "—"}
+            </p>
+            <pre className="text-xs overflow-x-auto bg-[var(--ef-accent-soft)] p-3 rounded-lg mt-1">{JSON.stringify(snapshot.approval.checkResults ?? {}, null, 2)}</pre>
+          </div>
+        </Section>
+      )}
+
       <Section title="10. Delivery">
         {snapshot.delivery ? (
           <pre className="text-sm whitespace-pre-wrap bg-[var(--ef-accent-soft)] p-3 rounded-lg">{snapshot.delivery.exactText}</pre>
         ) : (
           <p className="text-sm text-[var(--ef-muted)]">Not delivered yet.</p>
         )}
+      </Section>
+
+      <Section title="Post-hoc flag (item 10 — inspection/export/flagging only; never blocks or changes delivery)">
+        <div className="flex flex-col gap-2">
+          <textarea value={flagNote} onChange={(e) => setFlagNote(e.target.value)} rows={2} className={inputClassName} placeholder="Optional note" />
+          <div className="flex gap-2">
+            <Button variant={snapshot.session.researcherFlagged ? "secondary" : "primary"} onClick={() => toggleFlag(true)} disabled={flagBusy}>
+              {snapshot.session.researcherFlagged ? "Flagged ✓" : "Flag this session"}
+            </Button>
+            {snapshot.session.researcherFlagged && (
+              <Button variant="secondary" onClick={() => toggleFlag(false)} disabled={flagBusy}>
+                Unflag
+              </Button>
+            )}
+          </div>
+        </div>
       </Section>
 
       <Section title="11. Measurements">
