@@ -62,7 +62,7 @@ export function SessionView({ sessionId, initialSnapshot }: { sessionId: string;
       case "assigned":
       case "pending_review":
       case "approved":
-        return <WaitingView />;
+        return <WaitingView onAdvance={refresh} />;
       case "delivered":
         return <DeliveryView sessionId={sessionId} snapshot={snapshot} onAdvance={refresh} />;
       case "ack_recorded":
