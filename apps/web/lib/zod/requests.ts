@@ -32,6 +32,10 @@ export const postMessageSchema = z.object({
   // before the participant has answered anything.
   content: z.string().trim().min(1).max(2000).nullable(),
   inputMode: z.enum(["text", "voice"]).default("text"),
+  // Client-generated per-attempt token so a retried submission (same
+  // answer, resent after a timeout) can be recognized as a duplicate
+  // instead of creating a second turn.
+  clientToken: z.string().min(1).max(100).optional(),
 });
 
 export const eligibilityAnswersSchema = z.object({

@@ -15,17 +15,31 @@ export function DiscoveryView({ sessionId, snapshot, onAdvance }: { sessionId: s
   const currentQuestion = assistantMessages[assistantMessages.length - 1]?.content ?? null;
   const history = snapshot.messages.slice(0, -1);
 
+  // Same token for repeated Retry presses of the same unsent answer; a new
+  // token once the answer actually changes (a genuinely new attempt). This
+  // is what lets the server tell a resend of a timed-out request apart
+  // from a real second answer.
+  const attemptRef = useRef<{ forAnswer: string; token: string } | null>(null);
+  function tokenForCurrentAttempt(): string {
+    if (attemptRef.current?.forAnswer === answer) return attemptRef.current.token;
+    const token = typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
+    attemptRef.current = { forAnswer: answer, token };
+    return token;
+  }
+
   async function submit() {
     if (!answer.trim() && snapshot.messages.length > 0) return;
     setSubmitting(true);
     setError(null);
+    const clientToken = tokenForCurrentAttempt();
     try {
       // The typed answer (`answer`) is intentionally left in the textarea
       // until a response actually succeeds — a failed or timed-out request
       // never loses what the participant wrote, so retrying just means
       // pressing the button again with the same text still in place.
-      await apiPost(`/api/sessions/${sessionId}/messages`, { content: snapshot.messages.length === 0 ? null : answer.trim(), inputMode: "text" });
+      await apiPost(`/api/sessions/${sessionId}/messages`, { content: snapshot.messages.length === 0 ? null : answer.trim(), inputMode: "text", clientToken });
       setAnswer("");
+      attemptRef.current = null;
       await onAdvance();
     } catch (err) {
       setError(

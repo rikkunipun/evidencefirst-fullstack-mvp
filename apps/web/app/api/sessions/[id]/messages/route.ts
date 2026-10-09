@@ -24,7 +24,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const json = await req.json().catch(() => null);
   const parsed = postMessageSchema.safeParse(json);
   if (!parsed.success) return NextResponse.json({ error: "invalid_request", details: parsed.error.flatten() }, { status: 400 });
-  const { content, inputMode } = parsed.data;
+  const { content, inputMode, clientToken } = parsed.data;
 
   const supabase = getServiceClient();
   const { data: session } = await supabase.from("sessions").select("state, revision, pack_topic").eq("id", id).maybeSingle();
@@ -34,13 +34,27 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
   const { data: existingMessages } = await supabase
     .from("messages")
-    .select("id, turn_number, role, content")
+    .select("id, turn_number, role, content, client_token")
     .eq("session_id", id)
     .order("turn_number", { ascending: true });
   const messages = existingMessages ?? [];
 
+  // Idempotency: if this exact attempt already landed (e.g. the client
+  // timed out waiting but the server actually finished the write), don't
+  // insert a second participant turn or call the model again. Tell the
+  // client to resync via its normal refresh path instead.
+  if (clientToken && messages.some((m) => m.client_token === clientToken)) {
+    return NextResponse.json({ assistantQuestion: null, done: false, duplicate: true });
+  }
+
   if (content === null && messages.length > 0) {
-    return NextResponse.json({ error: "invalid_request", details: "content required after the first turn" }, { status: 400 });
+    // The kickoff call (content===null) doesn't always create a
+    // participant row to dedupe against (e.g. no free-text story was
+    // typed), so a retried kickoff after the real first turn already
+    // succeeded can't be matched by client_token. Treat it as a resync
+    // request rather than an error — the client just needs the state it
+    // already has, not a fresh turn.
+    return NextResponse.json({ assistantQuestion: null, done: false, duplicate: true });
   }
 
   let nextTurnNumber = messages.length > 0 ? messages[messages.length - 1].turn_number + 1 : 1;
@@ -61,7 +75,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (effectiveContent !== null) {
     const { data: inserted, error } = await supabase
       .from("messages")
-      .insert({ session_id: id, turn_number: nextTurnNumber, role: "participant", input_mode: effectiveContent === content ? inputMode : "text", content: effectiveContent })
+      .insert({
+        session_id: id,
+        turn_number: nextTurnNumber,
+        role: "participant",
+        input_mode: effectiveContent === content ? inputMode : "text",
+        content: effectiveContent,
+        client_token: clientToken ?? null,
+      })
       .select("id, content")
       .single();
     if (error) return NextResponse.json({ error: "server_error" }, { status: 500 });
