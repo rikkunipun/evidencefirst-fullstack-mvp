@@ -14,6 +14,10 @@ export interface SessionSnapshot {
      * Distinct from parkReason — state stays 'discovery'. Participant-safe
      * (fixed, pre-approved wording; no transcript or diagnostics). */
     discoveryRecoveryReason?: string | null;
+    /** Not sensitive (a researcher-chosen short label, no personal data) —
+     * surfaced so "Try a different decision" can carry it into the next
+     * session's /participate link instead of silently dropping it. */
+    pilotLabel?: string | null;
   };
   context: { situationCard: string; goal: string | null; decisionCue: string | null; freeText: string | null } | null;
   messages: { id: string; turnNumber: number; role: string; content: string; createdAt: string }[];

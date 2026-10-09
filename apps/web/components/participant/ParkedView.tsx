@@ -3,6 +3,12 @@ import { Card } from "@/components/ui/Card";
 import type { ParticipantSessionSnapshot } from "@/lib/types/session";
 
 export function ParkedView({ snapshot }: { snapshot: ParticipantSessionSnapshot }) {
+  // Starting over must still land on the real consent flow (never skip
+  // it) and must carry the pilot label forward — otherwise a pilot
+  // participant's second session silently falls out of its cohort.
+  const pilotLabel = snapshot.session.pilotLabel;
+  const tryAgainHref = pilotLabel ? `/participate?pilot=${encodeURIComponent(pilotLabel)}` : "/participate";
+
   return (
     <Card className="flex flex-col gap-4">
       <h1 className="text-lg font-semibold">Thank you for sharing this</h1>
@@ -14,7 +20,7 @@ export function ParkedView({ snapshot }: { snapshot: ParticipantSessionSnapshot 
         study.
       </p>
       <Link
-        href="/participate"
+        href={tryAgainHref}
         className="inline-flex items-center justify-center rounded-lg border border-[var(--ef-border)] bg-white px-5 py-3 text-base font-medium text-[var(--ef-ink)] min-h-[48px] hover:bg-[var(--ef-accent-soft)] self-start"
       >
         Try a different decision

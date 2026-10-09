@@ -73,7 +73,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   // instead of a one-shot "duplicate" that could strand it on a stale
   // "Getting started" screen forever.
   if (clientToken && messages.some((m) => m.client_token === clientToken)) {
-    const stillInFlight = session.state === "discovery" && messages[messages.length - 1]?.role === "participant";
+    // In-flight iff the session hasn't moved on AND hasn't resolved into a
+    // recovery state either — a recovery outcome leaves state at
+    // 'discovery' with no new assistant row, but it IS a completed turn,
+    // not a pending one.
+    const stillInFlight = session.state === "discovery" && !session.discovery_recovery_reason && messages[messages.length - 1]?.role === "participant";
     return NextResponse.json({ assistantQuestion: null, done: false, duplicate: true, inFlight: stillInFlight });
   }
 
