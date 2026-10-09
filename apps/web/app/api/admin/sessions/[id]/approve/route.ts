@@ -6,6 +6,18 @@ import { EVIDENCE_PACKS } from "@/lib/evidence";
 import { transitionSession } from "@/lib/session-transition";
 import { recordAuditEvent } from "@/lib/audit";
 
+// Maps the new, explicit two-question review onto the legacy disposition
+// column for anything still reading it (admin display, exports) — never
+// used for routing logic below, which reads briefAccurate/evidenceRelation
+// directly. 'contradicts' and 'outside_scope' are new values the expanded
+// check constraint (migration 0016) now allows.
+function legacyDisposition(briefAccurate: boolean, evidenceRelation: string): string {
+  if (!briefAccurate) return "needs_clarification";
+  if (evidenceRelation === "unresolved") return "needs_clarification";
+  if (evidenceRelation === "outside_scope") return "outside_scope";
+  return evidenceRelation; // supports|qualifies|contradicts
+}
+
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const researcher = await requireResearcherOrResponse();
   if (researcher instanceof NextResponse) return researcher;
@@ -40,7 +52,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     .insert({
       draft_revision_id: draft.id,
       reviewer_email: researcher.email,
-      disposition: body.disposition,
+      disposition: legacyDisposition(body.briefAccurate, body.evidenceRelation),
+      brief_accurate: body.briefAccurate,
+      evidence_relation: body.evidenceRelation,
       scope_justification: body.scopeJustification,
       content_hash: draft.content_hash,
     })
@@ -48,13 +62,36 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     .single();
   if (approvalError || !approval) return NextResponse.json({ error: "server_error" }, { status: 500 });
 
-  if (body.disposition === "unsupported" || body.disposition === "needs_clarification") {
+  // Genuinely terminal: the evidence doesn't cover this specific claim at
+  // all. Nothing a draft revision can fix.
+  if (body.evidenceRelation === "outside_scope") {
     const t = await transitionSession(supabase, id, "pending_review", session.revision, ["refused"]);
     if (!t.ok) return NextResponse.json({ error: "server_error", reason: t.reason }, { status: 500 });
-    await recordAuditEvent({ actorType: "researcher", actorId: researcher.email, action: "refused", entityType: "sessions", entityId: id, after: { disposition: body.disposition } });
+    await recordAuditEvent({ actorType: "researcher", actorId: researcher.email, action: "refused", entityType: "sessions", entityId: id, after: { evidenceRelation: body.evidenceRelation } });
     return NextResponse.json({ ok: true, outcome: "refused" });
   }
 
+  // Actionable return path, not a terminal refusal: an inaccurate brief
+  // needs a revised draft; "unresolved" means more work, not a dead end.
+  // Back to 'assigned' — "Generate draft" becomes available again.
+  if (!body.briefAccurate || body.evidenceRelation === "unresolved") {
+    const t = await transitionSession(supabase, id, "pending_review", session.revision, ["assigned"]);
+    if (!t.ok) return NextResponse.json({ error: "server_error", reason: t.reason }, { status: 500 });
+    await recordAuditEvent({
+      actorType: "researcher",
+      actorId: researcher.email,
+      action: "returned_for_revision",
+      entityType: "sessions",
+      entityId: id,
+      after: { briefAccurate: body.briefAccurate, evidenceRelation: body.evidenceRelation },
+    });
+    return NextResponse.json({ ok: true, outcome: "needs_revision" });
+  }
+
+  // supports | qualifies | contradicts, with an accurate brief: deliver.
+  // The claim-to-source map and exact delivered text are unchanged by
+  // which of these three it is — only the recorded relationship differs,
+  // so a contradicted belief is never mislabeled as supported.
   const { data: assignment } = await supabase.from("assignments").select("pack_id").eq("session_id", id).maybeSingle();
   const pack = assignment ? EVIDENCE_PACKS[assignment.pack_id] : null;
   const sourceMap = (draft.claim_order as string[]).map((claimId) => {
@@ -92,7 +129,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "server_error", reason: t.reason }, { status: 500 });
   }
 
-  await recordAuditEvent({ actorType: "researcher", actorId: researcher.email, action: "approved_and_delivered", entityType: "sessions", entityId: id, after: { disposition: body.disposition } });
+  await recordAuditEvent({
+    actorType: "researcher",
+    actorId: researcher.email,
+    action: "approved_and_delivered",
+    entityType: "sessions",
+    entityId: id,
+    after: { briefAccurate: body.briefAccurate, evidenceRelation: body.evidenceRelation },
+  });
 
   return NextResponse.json({ ok: true, outcome: "delivered" });
 }

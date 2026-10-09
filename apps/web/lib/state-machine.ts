@@ -46,7 +46,11 @@ const TRANSITIONS: Record<SessionState, SessionState[]> = {
   crux: ["pre_evidence_recorded", "parked"],
   pre_evidence_recorded: ["assigned"],
   assigned: ["pending_review"],
-  pending_review: ["approved", "refused"],
+  // "assigned" too (Tier 2 item 8): a researcher who finds the brief
+  // inaccurate, or the evidence relationship genuinely unresolved, gets an
+  // actionable return path to regenerate the draft — not an accidental
+  // terminal refusal for something that just needs revision.
+  pending_review: ["approved", "refused", "assigned"],
   refused: [],
   approved: ["delivered"],
   delivered: ["ack_recorded"],

@@ -41,7 +41,11 @@ export function SessionTrace({ sessionId, snapshot: initial, auditEvents: initia
   const [snapshot, setSnapshot] = useState(initial);
   const [auditEvents, setAuditEvents] = useState(initialAudit);
   const [sourceMap, setSourceMap] = useState<{ claimId: string; text: string; sourceTitle: string; url: string }[] | null>(null);
-  const [disposition, setDisposition] = useState<"supported" | "qualifies" | "unsupported" | "needs_clarification">("supported");
+  // No default for either — a researcher must explicitly choose both; an
+  // omitted choice fails server validation rather than silently acting as
+  // "Supported".
+  const [briefAccurate, setBriefAccurate] = useState<"yes" | "no" | "">("");
+  const [evidenceRelation, setEvidenceRelation] = useState<"supports" | "qualifies" | "contradicts" | "unresolved" | "outside_scope" | "">("");
   const [scopeJustification, setScopeJustification] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -67,16 +71,19 @@ export function SessionTrace({ sessionId, snapshot: initial, auditEvents: initia
   }
 
   async function approve() {
-    if (!snapshot.draft) return;
+    if (!snapshot.draft || briefAccurate === "" || evidenceRelation === "") return;
     setBusy(true);
     setError(null);
     try {
       await apiPost(`/api/admin/sessions/${sessionId}/approve`, {
         draftRevisionId: snapshot.draft.id,
-        disposition,
+        briefAccurate: briefAccurate === "yes",
+        evidenceRelation,
         scopeJustification,
         contentHash: snapshot.draft.contentHash,
       });
+      setBriefAccurate("");
+      setEvidenceRelation("");
       await refresh();
     } catch (err) {
       // A double-click (or two reviewers racing) can lose to the single
@@ -191,15 +198,34 @@ export function SessionTrace({ sessionId, snapshot: initial, auditEvents: initia
       {snapshot.session.state === "pending_review" && snapshot.draft && (
         <Section title="9. Researcher approval">
           <div className="flex flex-col gap-3">
-            <label className="text-sm font-medium" htmlFor="disposition">
-              Does the evidence support this exact claim?
+            <label className="text-sm font-medium" htmlFor="briefAccurate">
+              Is this brief accurate and in scope?
             </label>
-            <select id="disposition" value={disposition} onChange={(e) => setDisposition(e.target.value as typeof disposition)} className={inputClassName}>
-              <option value="supported">Supported</option>
-              <option value="qualifies">Qualifies (supported with caveats)</option>
-              <option value="unsupported">Unsupported / outside scope</option>
-              <option value="needs_clarification">Needs clarification</option>
+            <select id="briefAccurate" value={briefAccurate} onChange={(e) => setBriefAccurate(e.target.value as typeof briefAccurate)} className={inputClassName}>
+              <option value="" disabled>
+                — select —
+              </option>
+              <option value="yes">Yes, accurate and in scope</option>
+              <option value="no">No — needs revision</option>
             </select>
+
+            <label className="text-sm font-medium" htmlFor="evidenceRelation">
+              How does the evidence relate to the participant&apos;s specific claim?
+            </label>
+            <select id="evidenceRelation" value={evidenceRelation} onChange={(e) => setEvidenceRelation(e.target.value as typeof evidenceRelation)} className={inputClassName}>
+              <option value="" disabled>
+                — select —
+              </option>
+              <option value="supports">Supports it</option>
+              <option value="qualifies">Qualifies it (supported with caveats)</option>
+              <option value="contradicts">Contradicts it</option>
+              <option value="unresolved">Unresolved — more work needed</option>
+              <option value="outside_scope">Outside scope — evidence doesn&apos;t cover this claim</option>
+            </select>
+            {(briefAccurate === "no" || evidenceRelation === "unresolved") && (
+              <p className="text-xs text-amber-700">This will return the session to &quot;assigned&quot; for a revised draft — not a terminal refusal.</p>
+            )}
+            {evidenceRelation === "outside_scope" && <p className="text-xs text-red-700">This will terminally refuse the session — the evidence pack doesn&apos;t cover this claim.</p>}
             <textarea
               value={scopeJustification}
               onChange={(e) => setScopeJustification(e.target.value)}
@@ -208,7 +234,7 @@ export function SessionTrace({ sessionId, snapshot: initial, auditEvents: initia
               placeholder="Scope justification (required)"
             />
             {error && <p className="text-sm text-red-700">{error}</p>}
-            <Button onClick={approve} disabled={busy || !scopeJustification.trim()}>
+            <Button onClick={approve} disabled={busy || !scopeJustification.trim() || briefAccurate === "" || evidenceRelation === ""}>
               {busy ? "Recording…" : "Record decision"}
             </Button>
           </div>

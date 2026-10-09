@@ -98,9 +98,17 @@ export const followupSubmitSchema = z.object({
   otherInfluences: z.string().trim().max(500).optional().nullable(),
 });
 
+/**
+ * Tier 2 item 8: two separate, both-required questions — no default value
+ * for either, so an omitted field fails validation rather than silently
+ * defaulting to "Supported". briefAccurate asks whether the draft itself
+ * is accurate and in scope; evidenceRelation asks how the evidence
+ * actually relates to the participant's specific claim.
+ */
 export const adminApproveSchema = z.object({
   draftRevisionId: z.string().uuid(),
-  disposition: z.enum(["supported", "qualifies", "unsupported", "needs_clarification"]),
+  briefAccurate: z.boolean(),
+  evidenceRelation: z.enum(["supports", "qualifies", "contradicts", "unresolved", "outside_scope"]),
   scopeJustification: z.string().trim().min(1).max(1000),
   contentHash: z.string().min(1),
 });

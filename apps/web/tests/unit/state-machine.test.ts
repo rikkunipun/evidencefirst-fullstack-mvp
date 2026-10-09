@@ -37,6 +37,14 @@ describe("state machine", () => {
     expect(canTransition("approved", "refused")).toBe(false);
   });
 
+  it("allows an actionable return to 'assigned' from pending_review (Tier 2 item 8: inaccurate brief or unresolved evidence relation is not a terminal refusal)", () => {
+    expect(canTransition("pending_review", "assigned")).toBe(true);
+    // Still not allowed from anywhere else — this is specifically the
+    // review-revision loop, not a general backwards escape hatch.
+    expect(canTransition("approved", "assigned")).toBe(false);
+    expect(canTransition("refused", "assigned")).toBe(false);
+  });
+
   it("rejects skipping ahead", () => {
     expect(canTransition("consented", "delivered")).toBe(false);
     expect(canTransition("discovery", "baseline_frozen")).toBe(false);
