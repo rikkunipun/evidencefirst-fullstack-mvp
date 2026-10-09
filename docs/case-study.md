@@ -1,142 +1,130 @@
 # EvidenceFirst — Verified Persuasion Without Unsupported Claims
 
-**Solo capstone · 100X Engineers C7 · 9 October 2026**
+**Solo capstone · 100X Engineers C7**
 
 **Live product:** https://evidencefirst-fullstack-mvp.vercel.app  
-**Source:** https://github.com/rikkunipun/evidencefirst-fullstack-mvp
+**Source code:** https://github.com/rikkunipun/evidencefirst-fullstack-mvp
+
+## At a glance
+
+- **40+ discovery conversations:** roughly 23 early hackathon interviews and another 20 capstone interviews, followed by three focused follow-ups. This is a conversation count; it is not a claim that 40 people completed the final product.
+- **Two complete hackathon cases:** confidence changed from 9→5 and 9→6 after sourced explanations. These cases demonstrated the workflow, not population-level persuasion efficacy.
+- **Three reviewed evidence packs:** physical activity, study methods, and learning-style matching, with five source-checked claim units in each pack.
+- **One public full-stack product:** adaptive discovery, conservative eligibility, fixed-versus-personalized delivery, immediate measurement, exact receipts, and seven-day follow-up.
+- **107 unit tests**, plus real-model, real-database and production smoke tests.
 
 ## The problem
 
-People sometimes make costly decisions because they strongly expect a particular outcome: avoiding all exercise when a gym is unavailable, relying on one study method, or choosing a course because of a job-market claim. Ordinary fact checking starts with what is wrong. Persuasion systems often add many claims, some of which are irrelevant or unsupported.
+People sometimes make decisions because they strongly expect an outcome: avoiding all exercise when a gym is unavailable, depending only on rereading while studying, or choosing a course because they expect it to guarantee better jobs. A normal fact checker starts by asking what is wrong. A persuasive model may produce many claims, including claims that are irrelevant or unsupported.
 
-EvidenceFirst starts somewhere else: **what did this person do, what did they expect would happen, and which reason is actually holding that expectation up?** It then delivers evidence only when an approved source directly addresses that reason. A refusal is a valid product outcome.
+EvidenceFirst starts earlier: **What did the person do? What did they expect would happen? Which reason is actually holding that expectation up?** Only after the person confirms that reason does the system look for evidence. If the reviewed evidence does not address the exact claim, it stops.
 
-## The hypothesis
+The hypothesis is that reason-matched evidence can preserve persuasive relevance while producing fewer unsupported claims than unrestricted persuasion.
 
-If a system identifies the participant's central, checkable reason and asserts only source-mapped claims that address it, it can preserve persuasive relevance while producing fewer unsupported claims than unconstrained persuasion.
+## What the interviews taught me
 
-The capstone does not assume that every belief is false. The system must also preserve supported beliefs, qualify mixed claims, and park cases driven by preference, resources, habits, identity, or topics outside the reviewed evidence library.
+### 1. Asking for a “belief” did not work
 
-## The hardest discovery
+My first question was often some version of “What do you strongly believe?” People froze or answered with broad opinions. Many conversations became stories about procrastination, preferences, cravings, social pressure, or not having enough money. I also struggled to choose the next question after each answer.
 
-The first interviews repeatedly failed. Asking people to name a “belief” produced silence, broad philosophy, procrastination stories, preferences, and purchases that did not involve a disputed factual expectation. The interviewer's next question was also difficult to choose consistently.
+The important discovery was that people do not naturally store their lives as neat belief statements. They remember incidents.
 
-The useful shift was from abstract belief recall to a concrete incident:
+### 2. A recent decision was easier to recall
 
-1. What did you choose, avoid, delay, or pay for recently?
-2. What alternative did you reject?
-3. What outcome did you expect?
-4. Did that expectation materially cause the decision?
-5. What cost has already happened?
-6. What is the main reason you are confident?
-7. If that reason were false, how far would confidence fall?
+The opening changed to: “Tell me about something you recently chose, avoided, delayed, or paid for.” From that incident, the interview reconstructs four parts:
 
-This separates factual or predictive claims from behavior gaps, social pressure, practical barriers, and personal values. It also turns belief discovery into a bounded product capability rather than a recruitment assumption.
+1. the action the person took;
+2. the real alternative they rejected;
+3. the outcome they expected;
+4. where that expectation came from.
+
+This produced much more concrete answers than directly asking for a belief.
+
+### 3. Most stories were not persuasion cases
+
+The next breakthrough was learning to park cases instead of forcing them into the project. An unread book caused by gaming was a behavior gap. Avoiding a purchase because of budget was a resource constraint. Choosing a food because of taste was a preference. Smoking cessation involved addiction and support needs. None of these becomes an evidence-correction problem simply because a decision occurred.
+
+A case proceeds only when the expected outcome materially caused the decision and an actual money, time, or health consequence has already occurred.
+
+### 4. The stated reason was not always the real reason
+
+Even after finding a candidate belief, people gave several reasons. EvidenceFirst therefore asks for the main reason and uses a counterfactual:
+
+> “If that reason turned out to be false, how far would your confidence fall?”
+
+If confidence would not change, that reason is not carrying the belief. The system may test one more participant-supplied reason, then stop. This is the crux step: it identifies what the evidence must address instead of sending a generic brochure.
+
+### 5. The participant must correct the wording
+
+Model extraction can omit an alternative, timeframe, or comparator. Before qualification, the participant sees separate editable statements for the decision and the exact empirical expectation. Nothing is frozen until the participant confirms both.
+
+### 6. A refusal is a valid result
+
+The final interview funnel became:
+
+1. recent incident;
+2. action and rejected alternative;
+3. expected outcome;
+4. causal role in the decision;
+5. actual consequence;
+6. participant-confirmed wording;
+7. initial confidence;
+8. central reason and counterfactual score;
+9. source match or honest refusal.
+
+This changed the product goal. Success is not the number of interviews converted into eligible beliefs. Success is classifying each story honestly and finding the smaller set that can be tested safely.
 
 ## How the product evolved
 
-### V1 — demonstrate the output
+### V1 — prove the output
 
-The hackathon prototype manually interviewed participants, assembled sourced briefs, and remeasured confidence. It demonstrated the intended input, process, and output, but discovery depended heavily on the interviewer and the workflow was not reproducible.
+The hackathon version used manual interviews and manually assembled evidence briefs. Two participants reconsidered their claims after seeing sourced information: one whey-protein belief moved from 9 to 5, and one gym-consistency belief moved from 9 to 6. This proved that the input–process–output idea could be demonstrated, but the interviewer still did most of the work.
 
-### V2 — structure discovery
+### V2 — structure the interview
 
-V2 introduced role-aware prompts, incident reconstruction, driver classification, six eligibility gates, and explicit parking. Testing showed that form-heavy screens were difficult to understand and that many student examples were behavior problems rather than misinformation.
+V2 introduced role-aware openings, incident reconstruction, driver categories, six eligibility gates, and explicit parking. Testing showed that the form-heavy interface was difficult to understand. It also confirmed that many student stories were behavior problems rather than misinformation.
 
-### V3.4 — bound the research logic
+### V3.4 — make the logic auditable
 
-V3.4 froze corrected score handling, timestamps, immutable records, evidence maps, source locators, supported-claim preservation, and reversal receipts. It also enabled three small source-reviewed evidence packs.
+V3.4 added corrected score handling, source maps, exact locators, immutable records, evidence directions, supported-belief preservation, and reversal receipts. The conversation was redesigned around one adaptive question at a time.
 
-### Full-stack MVP — make the experiment real
+### Full-stack MVP — make the experiment runnable
 
-The final build moves the workflow to a public Next.js application with server-side AI calls, PostgreSQL persistence, authenticated researcher tools, reproducible condition assignment, exact delivery receipts, and tokenized seven-day follow-up.
+The final product is a public Next.js application with server-side model calls, PostgreSQL persistence, authenticated researcher tools, deterministic eligibility and assignment, exact delivery receipts, and tokenized seven-day follow-up.
 
-## Participant journey
+## What the final product includes
 
-1. Adult consent and disclosure that an AI-assisted prototype and model provider are involved.
-2. Optional role and topic cues that help recall a recent decision without forcing a belief.
-3. One-question-at-a-time adaptive interview.
-4. Participant correction and confirmation of the decision and exact expectation.
-5. Deterministic eligibility checks for current, specific, causal, consequential, checkable, safe, and in-scope cases.
-6. Initial confidence score.
-7. Central-reason confirmation and counterfactual confidence check.
-8. Final pre-evidence baseline and reproducible experimental assignment.
-9. Fixed or personalized delivery from the same bounded evidence pack.
-10. Immediate confidence, explanation, intended behavior, exact receipt, and seven-day follow-up link.
+- Adult consent and a clear AI/model-provider disclosure.
+- Optional role and topic cues to help the participant remember an incident.
+- A bounded adaptive interview with message-level provenance.
+- Participant correction of the decision and empirical claim.
+- Deterministic checks for current, specific, causal, consequential, checkable, safe, and in-scope cases.
+- Initial confidence, crux testing, and a final pre-evidence baseline.
+- Reproducible assignment to a fixed or personalized condition.
+- Delivery assembled only from approved, versioned claim units.
+- Immediate confidence, explanation, and intended behavior.
+- Exact participant and researcher receipts.
+- A seven-day follow-up that is unavailable before its due time.
+- A researcher dashboard, de-identified export, and reversal QA.
 
-## System design
+The model asks questions, extracts candidate fields, and proposes a closed claim category. Deterministic code controls consent, states, eligibility, scores, assignment, approved claim wording, delivery, and follow-up. The model never writes the final factual brief freely.
 
-The model does only the tasks that need language understanding:
+## Evidence and comparison design
 
-- ask the next neutral question;
-- extract candidate fields with message-level provenance;
-- classify a candidate claim into a closed policy kind or return none/unclear;
-- summarize wording for participant correction.
+The MVP contains three deliberately narrow packs: general physical activity, study methods, and learning-style matching. Each pack contains five reviewed claims with an exact sentence, source, URL, locator, evidence note, reason tags, direction, and version.
 
-Deterministic code controls:
+The **fixed condition** shows the same dense brief for that belief cluster. The **personalized condition** uses the same evidence inventory but orders the approved claims around the participant's confirmed central reason. This keeps factual budget and source quality constant while testing whether relevance creates the difference.
 
-- consent and age gate;
-- state transitions;
-- eligibility;
-- score validity, including zero and null;
-- condition assignment;
-- evidence-pack membership;
-- exact claim wording and source links;
-- delivery acknowledgement;
-- record freezing and content hashes;
-- receipts and follow-up timing.
+The reversal test checks that the system does not always argue against the participant. A supported claim is preserved. A broader or unsupported claim receives zero factual claims rather than an invented correction.
 
-This split prevents the same model that wants to persuade from freely inventing the facts used to persuade.
+## What has been demonstrated
 
-## Evidence architecture
+The product works end to end on the public deployment. Tests cover supported delivery, contradiction, preference parking, out-of-scope refusal, score handling, duplicate protection, receipts, and follow-up timing. Source links and locators appear directly in the participant brief.
 
-The MVP contains three narrow packs: general physical activity, study methods, and learning-style matching. Each pack has five approved claim units with an ID, exact wording, source, URL, locator, evidence note, reason tags, direction, and version.
+The work does **not** yet establish persuasion efficacy. The two hackathon cases are useful demonstrations, and the software tests establish functional behavior. A proper conclusion requires consented fixed-versus-personalized participants, blinded unsupported-claim review, and seven-day outcomes.
 
-The personalized condition changes which approved facts arrive first based on the participant's confirmed reason. It does not change the factual inventory or add persuasive prose. The fixed condition uses a versioned dense brief from the same pack. This makes relevance the experimental difference rather than tone, model size, or factual budget.
+## What changed in my thinking
 
-When no approved claim direction matches, EvidenceFirst says the evidence library cannot address the exact claim. It does not treat missing evidence as proof of falsity.
+I began by treating the project as a sourced persuasion generator. The interviews showed that the harder and more valuable problem is deciding whether a checkable, consequential belief has been found at all. The final product therefore treats discovery, conservative qualification, supported-belief preservation, and refusal as core product behavior.
 
-## Reversal test
-
-The reversal route tests whether the system always argues against the participant. Exact supported assertions are preserved; broader, cross-pack, or unsupported claims are refused with zero factual claims delivered. Reversal receipts are stored as first-class QA evidence.
-
-## What was verified
-
-- 107 unit tests pass.
-- TypeScript, linting, and the production build pass.
-- Real-model, real-database tests cover supported delivery, preference parking, out-of-scope refusal, follow-up timing, immutable receipts, and both automatic and manual review modes.
-- Production smoke tests reached delivery, measurement, and receipt without participant authentication.
-- Mobile overflow, withdrawal, idempotent retry, duplicate delivery, capability cookies, RLS boundaries, and secret exposure were checked.
-- Official source links and source locators are shown directly in the participant brief.
-
-These results establish functional correctness and safety behavior. They do not establish persuasion efficacy. Synthetic QA records are marked as test data and excluded from human-result claims.
-
-## What changed after evidence
-
-The project began with the assumption that the main task was to produce a persuasive sourced response. Interviews showed that the earlier bottleneck is deciding whether a real belief has been found at all. The final hypothesis therefore includes discovery quality, conservative qualification, and honest refusal as part of the product.
-
-The design also changed from a mandatory human gate to two explicit modes. Manual review remains available for facilitated research. The production pilot uses a closed deterministic policy for automatic delivery and records system validation separately from human review. Researcher auditing remains visible after delivery.
-
-## Current limitations
-
-- Evidence coverage is deliberately narrow; recall is lower than a general web-search system.
-- Some valid claims receive a refusal because their direction has not been reviewed.
-- Adaptive turns can take roughly 10–25 seconds.
-- Model extraction can lose an important comparator, so participants must verify the exact wording.
-- Automatic policy matching is not full scientific entailment.
-- Development and production share a Supabase project.
-- Human comparison and delayed-outcome evidence remain necessary before evaluating the persuasion hypothesis.
-
-## What I would build next
-
-1. Run consented fixed-versus-personalized pilots with a preregistered analysis.
-2. Measure unsupported claims per delivered brief through blinded review.
-3. Improve structured extraction so every claim preserves its action, comparator, outcome, scope, and timeframe.
-4. Expand evidence packs only after independent source review.
-5. Add a faster interview model and measure whether speed changes completion quality.
-6. Use the seven-day result to distinguish immediate agreement from durable belief and behavior change.
-
-## Closing
-
-EvidenceFirst is not designed to win every argument. It is designed to know what the person is defending, show only evidence that addresses that reason, preserve supported beliefs, and stop when the evidence is not good enough.
-
+EvidenceFirst is not designed to win every argument. It is designed to understand what the person is defending, show only evidence that addresses that reason, and stop when the evidence is not good enough.
