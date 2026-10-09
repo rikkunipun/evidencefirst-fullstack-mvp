@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { requireResearcherOrResponse } from "@/lib/require-researcher-api";
 import { getServiceClient } from "@/lib/supabase/service-client";
+import { getEnv } from "@/lib/env";
 import { EVIDENCE_PACKS, selectClaims } from "@/lib/evidence";
 import { composeDelivery, DELIVERY_TEMPLATE_VERSION } from "@/lib/delivery-template";
 import { computeContentHash } from "@/lib/content-hash";
@@ -11,6 +12,12 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   const researcher = await requireResearcherOrResponse();
   if (researcher instanceof NextResponse) return researcher;
   const { id } = await params;
+
+  // Item 10: admin is inspection/export/post-hoc flagging only in auto
+  // mode — no manual draft/approve action, not even as a side door.
+  if (getEnv().DELIVERY_MODE !== "manual") {
+    return NextResponse.json({ error: "invalid_state", details: "manual draft generation is disabled while DELIVERY_MODE=auto" }, { status: 409 });
+  }
 
   const supabase = getServiceClient();
   const { data: session } = await supabase.from("sessions").select("state, revision").eq("id", id).maybeSingle();

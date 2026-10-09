@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { requireResearcherOrResponse } from "@/lib/require-researcher-api";
 import { getServiceClient } from "@/lib/supabase/service-client";
+import { getEnv } from "@/lib/env";
 import { adminApproveSchema } from "@/lib/zod/requests";
 import { EVIDENCE_PACKS } from "@/lib/evidence";
 import { transitionSession } from "@/lib/session-transition";
@@ -11,6 +12,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const researcher = await requireResearcherOrResponse();
   if (researcher instanceof NextResponse) return researcher;
   const { id } = await params;
+
+  // Item 10: admin is inspection/export/post-hoc flagging only in auto
+  // mode — no manual approve action, not even as a side door.
+  if (getEnv().DELIVERY_MODE !== "manual") {
+    return NextResponse.json({ error: "invalid_state", details: "manual approval is disabled while DELIVERY_MODE=auto" }, { status: 409 });
+  }
 
   const json = await req.json().catch(() => null);
   const parsed = adminApproveSchema.safeParse(json);

@@ -135,3 +135,11 @@ export const adminMarkTestSchema = z.object({
   testRunId: z.string().trim().min(1).max(60),
   reason: z.string().trim().min(1).max(300),
 });
+
+/** Item 10: researcher-initiated post-hoc flagging — any session, any
+ * time, distinct from the participant-initiated discovery recovery
+ * request (needs_researcher_review). Not a gate, not a delivery block. */
+export const adminFlagSchema = z.object({
+  flagged: z.boolean(),
+  note: z.string().trim().max(1000).optional().nullable(),
+});
