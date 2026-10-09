@@ -22,7 +22,9 @@ Do not invent facts about the participant. Base the classification only on the r
 let client: OpenAI | null = null;
 function getClient(): OpenAI {
   if (client) return client;
-  client = new OpenAI({ apiKey: getEnv().OPENAI_API_KEY });
+  // See lib/ai/discovery.ts for why this is set explicitly — the SDK's
+  // ~10 minute default was observed hanging a real call during testing.
+  client = new OpenAI({ apiKey: getEnv().OPENAI_API_KEY, timeout: 20_000 });
   return client;
 }
 

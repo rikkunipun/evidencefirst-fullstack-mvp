@@ -5,18 +5,7 @@ import { adminApproveSchema } from "@/lib/zod/requests";
 import { EVIDENCE_PACKS } from "@/lib/evidence";
 import { transitionSession } from "@/lib/session-transition";
 import { recordAuditEvent } from "@/lib/audit";
-
-// Maps the new, explicit two-question review onto the legacy disposition
-// column for anything still reading it (admin display, exports) — never
-// used for routing logic below, which reads briefAccurate/evidenceRelation
-// directly. 'contradicts' and 'outside_scope' are new values the expanded
-// check constraint (migration 0016) now allows.
-function legacyDisposition(briefAccurate: boolean, evidenceRelation: string): string {
-  if (!briefAccurate) return "needs_clarification";
-  if (evidenceRelation === "unresolved") return "needs_clarification";
-  if (evidenceRelation === "outside_scope") return "outside_scope";
-  return evidenceRelation; // supports|qualifies|contradicts
-}
+import { legacyDisposition } from "@/lib/approval-disposition";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const researcher = await requireResearcherOrResponse();
@@ -60,7 +49,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     })
     .select("id, disposition, approved_at")
     .single();
-  if (approvalError || !approval) return NextResponse.json({ error: "server_error" }, { status: 500 });
+  if (approvalError || !approval) {
+    console.error("[approve] approval insert failed:", approvalError);
+    return NextResponse.json({ error: "server_error" }, { status: 500 });
+  }
 
   // Genuinely terminal: the evidence doesn't cover this specific claim at
   // all. Nothing a draft revision can fix.
@@ -126,6 +118,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (deliveryError.message.includes("was withdrawn")) {
       return NextResponse.json({ error: "invalid_state", details: "participant withdrew before delivery could be recorded" }, { status: 409 });
     }
+    console.error("[approve] delivery insert failed:", deliveryError);
     return NextResponse.json({ error: "server_error" }, { status: 500 });
   }
 

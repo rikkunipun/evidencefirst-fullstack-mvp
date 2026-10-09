@@ -9,7 +9,14 @@ import { enforceProvenance, neutralFallbackTurn, type FieldValidationDiagnostic 
 let openaiClient: OpenAI | null = null;
 function getClient(): OpenAI {
   if (openaiClient) return openaiClient;
-  openaiClient = new OpenAI({ apiKey: getEnv().OPENAI_API_KEY });
+  // The SDK's default timeout is ~10 minutes — observed directly during
+  // Tier 2 e2e testing (2026-10-09): one call hung for ~11 minutes before
+  // the client gave up, far past any reasonable UX expectation and far
+  // past the existing 2-attempt retry's intent. 20s bounds a single
+  // attempt tightly enough that the existing retry-then-fallback path
+  // (discovery-pure.ts neutralFallbackTurn) still has time to run within
+  // a reasonable total turn time, instead of a hang nobody recovers from.
+  openaiClient = new OpenAI({ apiKey: getEnv().OPENAI_API_KEY, timeout: 20_000 });
   return openaiClient;
 }
 

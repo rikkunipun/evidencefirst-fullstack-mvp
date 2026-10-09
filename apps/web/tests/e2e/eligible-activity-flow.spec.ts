@@ -10,26 +10,58 @@ dotenv.config({ path: path.join(process.cwd(), ".env.local") });
  * Full eligible activity journey against the REAL OpenAI API and the real
  * Supabase project: discovery -> confirmation -> eligibility -> baseline ->
  * crux -> pre-evidence/assignment -> researcher login -> draft -> approve ->
- * delivered. Deletes everything it creates (session + a throwaway test
- * researcher password rotation) at the end, pass or fail.
+ * delivered. Deletes everything it creates (session + a dedicated,
+ * disposable test-researcher auth account) at the end, pass or fail.
  *
  * This is a LIVE-MODEL test, not mocked. It is slower and costs real API
  * calls; that's intentional (the brief requires at least one such check).
+ *
+ * IMPORTANT: this NEVER touches the real admin account's password. It
+ * creates its own throwaway Supabase Auth user and requires the test
+ * process's ADMIN_EMAILS to include that user's email (see README note
+ * below) — never rotates credentials on a real, shared researcher account.
  */
 
-async function rotateAdminPassword(): Promise<{ email: string; password: string }> {
+/**
+ * A fixed, dedicated, disposable test-researcher email — never the real
+ * admin's. Fixed (not time-based) so it can be added to ADMIN_EMAILS
+ * before the dev server starts: e.g.
+ * `ADMIN_EMAILS="$ADMIN_EMAILS,ef-test-researcher@evidencefirst.test" npm run dev`
+ * (a shell env var, never written to .env.local).
+ */
+export const E2E_TEST_RESEARCHER_EMAIL = "ef-test-researcher@evidencefirst.test";
+
+/**
+ * Creates (or recreates, if a stale one exists from a prior aborted run)
+ * this dedicated test-only Supabase Auth user and returns fresh
+ * credentials. This account is wholly owned by this test suite — resetting
+ * its own password is not the "rotate a real/shared account's credentials"
+ * action this project forbids; it never touches any other account.
+ */
+async function createTestResearcher(): Promise<{ email: string; password: string; userId: string }> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-  const email = (process.env.ADMIN_EMAILS || "").split(",")[0]?.trim();
-  if (!email) throw new Error("ADMIN_EMAILS must have at least one address for this test");
   const supabase = createClient(url, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } });
-  const { data: list } = await supabase.auth.admin.listUsers();
-  const user = list.users.find((u) => u.email?.toLowerCase() === email.toLowerCase());
-  if (!user) throw new Error(`No existing Supabase Auth user for ${email}`);
   const password = randomBytes(12).toString("base64url");
-  const { error } = await supabase.auth.admin.updateUserById(user.id, { password });
-  if (error) throw new Error(error.message);
-  return { email, password };
+
+  const { data: list } = await supabase.auth.admin.listUsers();
+  const existing = list?.users.find((u) => u.email?.toLowerCase() === E2E_TEST_RESEARCHER_EMAIL);
+  if (existing) {
+    const { error } = await supabase.auth.admin.updateUserById(existing.id, { password });
+    if (error) throw new Error(error.message);
+    return { email: E2E_TEST_RESEARCHER_EMAIL, password, userId: existing.id };
+  }
+
+  const { data, error } = await supabase.auth.admin.createUser({ email: E2E_TEST_RESEARCHER_EMAIL, password, email_confirm: true });
+  if (error || !data.user) throw new Error(error?.message ?? "failed to create test researcher");
+  return { email: E2E_TEST_RESEARCHER_EMAIL, password, userId: data.user.id };
+}
+
+async function deleteTestResearcher(userId: string) {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+  const supabase = createClient(url, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } });
+  await supabase.auth.admin.deleteUser(userId);
 }
 
 async function cleanupSession(sessionId: string) {
@@ -72,6 +104,13 @@ async function postJson(request: APIRequestContext, url: string, body: unknown) 
   return { status: res.status(), body: await res.json().catch(() => ({})) };
 }
 
+async function markIsTest(sessionId: string, testRunId: string) {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+  const supabase = createClient(url, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } });
+  await supabase.from("sessions").update({ is_test: true, test_run_id: testRunId }).eq("id", sessionId);
+}
+
 test("eligible activity case reaches confirmed delivery through real discovery, gates, crux, assignment, and researcher approval", async ({ page, request }) => {
   test.setTimeout(180_000);
 
@@ -84,7 +123,9 @@ test("eligible activity case reaches confirmed delivery through real discovery, 
   });
   expect(created.status).toBe(200);
   const sessionId: string = created.body.sessionId;
+  await markIsTest(sessionId, "e2e-eligible-activity-flow");
 
+  let testResearcherUserId: string | null = null;
   try {
     // 2. Discovery loop (real model), scripted answers, bounded by the 8-question budget.
     const answers = [
@@ -104,8 +145,14 @@ test("eligible activity case reaches confirmed delivery through real discovery, 
     expect(turn.body.done).toBe(true);
     expect(turn.body.nextStep).toBe("confirmation");
 
-    // 3. Confirm the generated wording as-is.
-    const confirm = await postJson(request, `/api/sessions/${sessionId}/confirm`, { confirmedWording: turn.body.generatedWording });
+    // 3. Confirm the two generated parts as-is (Tier 2 item 7 split).
+    const confirmGet = await request.get(`/api/sessions/${sessionId}`);
+    const confirmSnapshot = await confirmGet.json();
+    const generatedNarrative = confirmSnapshot.beliefConfirmation.generatedDecisionNarrative;
+    const generatedClaim = confirmSnapshot.beliefConfirmation.generatedEmpiricalClaim;
+    expect(generatedNarrative).toBeTruthy();
+    expect(generatedClaim).toBeTruthy();
+    const confirm = await postJson(request, `/api/sessions/${sessionId}/confirm`, { decisionNarrative: generatedNarrative, empiricalClaim: generatedClaim });
     expect(confirm.status).toBe(200);
 
     // 4. Eligibility: all six gates should pass for this scripted case.
@@ -136,8 +183,12 @@ test("eligible activity case reaches confirmed delivery through real discovery, 
     expect(preEvidence.status).toBe(200);
     expect(["fixed", "personalized"]).toContain(preEvidence.body.condition);
 
-    // 8. Researcher logs in for real through the UI.
-    const { email, password } = await rotateAdminPassword();
+    // 8. Researcher logs in for real through the UI, using a dedicated
+    // disposable test account (never the real admin's credentials). The
+    // process running this test must have ADMIN_EMAILS including this
+    // email — see createTestResearcher's doc comment.
+    const { email, password, userId } = await createTestResearcher();
+    testResearcherUserId = userId;
     await page.goto("/admin/login");
     await page.getByLabel("Email").fill(email);
     await page.getByLabel("Password").fill(password);
@@ -151,7 +202,8 @@ test("eligible activity case reaches confirmed delivery through real discovery, 
 
     const approve = await postJson(page.request, `/api/admin/sessions/${sessionId}/approve`, {
       draftRevisionId: draft.body.draft.id,
-      disposition: "supported",
+      briefAccurate: true,
+      evidenceRelation: "supports",
       scopeJustification: "Activity pack directly addresses the equipment/consistency reason.",
       contentHash: draft.body.draft.contentHash,
     });
@@ -183,6 +235,24 @@ test("eligible activity case reaches confirmed delivery through real discovery, 
     const earlySubmit = await postJson(request, `/api/follow-up/${followupToken}`, { score: 5, reportedBehavior: "test" });
     expect(earlySubmit.status).toBe(409);
 
+    // 13b. Tier 2 item 10: reissue the follow-up link (simulating a lost
+    // link after a refresh). The old token must stop working; the new one
+    // must work in its place; due_at must be unchanged.
+    const reissue = await postJson(request, `/api/sessions/${sessionId}/followup-link`, {});
+    expect(reissue.status).toBe(200);
+    expect(reissue.body.followupUrl).toMatch(/\/follow-up\//);
+    // Same instant — compare as dates, not raw strings (the reissue route
+    // reads due_at straight back from Postgres, which textually renders
+    // timestamptz differently from the original `.toISOString()` call).
+    expect(new Date(reissue.body.dueAt).getTime()).toBe(new Date(post.body.dueAt).getTime());
+    const newToken = reissue.body.followupUrl.split("/follow-up/")[1];
+    expect(newToken).not.toBe(followupToken);
+
+    const oldTokenNowGet = await request.get(`/api/follow-up/${followupToken}`);
+    expect(oldTokenNowGet.status()).toBe(404);
+    const newTokenGet = await request.get(`/api/follow-up/${newToken}`);
+    expect(newTokenGet.status()).toBe(200);
+
     // 14. Receipt download includes the frozen belief and both real scores.
     const receiptRes = await request.get(`/api/sessions/${sessionId}/receipt`);
     const receipt = await receiptRes.json();
@@ -197,5 +267,6 @@ test("eligible activity case reaches confirmed delivery through real discovery, 
     expect(resumedBody.delivery.exactText).toBe(finalBody.delivery.exactText);
   } finally {
     await cleanupSession(sessionId);
+    if (testResearcherUserId) await deleteTestResearcher(testResearcherUserId);
   }
 });
