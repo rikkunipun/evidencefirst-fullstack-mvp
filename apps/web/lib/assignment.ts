@@ -3,6 +3,7 @@
  * reproduces each allocation; nobody can guess assignment from a public
  * session ID. Pure functions here are unit-tested without a database.
  */
+import { randomInt } from "node:crypto";
 
 export const ASSIGNMENT_ALGORITHM_VERSION = "permuted-block-v1";
 
@@ -22,7 +23,6 @@ export function buildPermutedBlock(blockSize: number, randomSource: () => number
 
 /** Node's CSPRNG, mapped to [0, 1). Production entry point for buildPermutedBlock. */
 export function cryptoRandomSource(): () => number {
-  const { randomInt } = require("node:crypto") as typeof import("node:crypto");
   const SCALE = 1_000_000_000;
   return () => randomInt(0, SCALE) / SCALE;
 }

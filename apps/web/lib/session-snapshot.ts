@@ -13,8 +13,23 @@ export type { SessionSnapshot, ParticipantSessionSnapshot };
  * `loadSessionSnapshot` result directly; never pass it through here.
  */
 export function toParticipantSnapshot(full: SessionSnapshot): ParticipantSessionSnapshot {
-  const { assignment, draft, approval, latestExtraction, ...rest } = full;
-  return rest;
+  // Explicit allowlist, not a denylist spread — a future field added to
+  // SessionSnapshot is safe-by-default (excluded here) until someone
+  // deliberately adds it below, rather than silently leaking through.
+  return {
+    session: full.session,
+    context: full.context,
+    messages: full.messages,
+    questionsAsked: full.questionsAsked,
+    beliefConfirmation: full.beliefConfirmation,
+    eligibility: full.eligibility,
+    baseline: full.baseline,
+    cruxPasses: full.cruxPasses,
+    cruxClassification: full.cruxClassification,
+    measurements: full.measurements,
+    delivery: full.delivery,
+    followup: full.followup,
+  };
 }
 
 /**

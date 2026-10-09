@@ -49,7 +49,7 @@ export function ReceiptView({ sessionId, snapshot, followupUrl }: { sessionId: s
 
       {followupUrl ? (
         <div className="rounded-lg border border-[var(--ef-accent)] bg-[var(--ef-accent-soft)] p-3 flex flex-col gap-2">
-          <p className="text-sm font-medium">Save this link — it's the only way to reach your 7-day follow-up:</p>
+          <p className="text-sm font-medium">Save this link — it&apos;s the only way to reach your 7-day follow-up:</p>
           <a href={followupUrl} className="text-sm text-[var(--ef-accent)] underline break-all">
             {followupUrl}
           </a>

@@ -19,7 +19,7 @@ export default function LandingPage() {
           <li>You type your answers, one question at a time.</li>
           <li>You must be 18 or older to take part.</li>
           <li>You can stop at any point — nothing is shared beyond this study.</li>
-          <li>If your topic isn't covered by our reviewed sources, we'll tell you honestly instead of guessing.</li>
+          <li>If your topic isn&apos;t covered by our reviewed sources, we&apos;ll tell you honestly instead of guessing.</li>
         </ul>
         <Link
           href="/participate"

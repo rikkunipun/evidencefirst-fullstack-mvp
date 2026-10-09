@@ -94,14 +94,10 @@ test("eligible activity case reaches confirmed delivery through real discovery, 
       "Yes, it actually happened — I did zero workouts that whole week and felt like I lost momentum.",
       "When I went back three days later I could only lift about 70% of my normal weight, so I lost real strength.",
     ];
-    let done = false;
     let turn = await postJson(request, `/api/sessions/${sessionId}/messages`, { content: null });
     expect(turn.status).toBe(200);
     for (const answer of answers) {
-      if (turn.body.done) {
-        done = true;
-        break;
-      }
+      if (turn.body.done) break;
       turn = await postJson(request, `/api/sessions/${sessionId}/messages`, { content: answer });
       expect(turn.status).toBe(200);
     }

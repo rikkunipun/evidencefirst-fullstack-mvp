@@ -10,7 +10,7 @@ export function ParkedView({ snapshot }: { snapshot: ParticipantSessionSnapshot 
         {snapshot.session.parkReason ?? "This particular case doesn't fit what this study can evaluate right now."}
       </p>
       <p className="text-sm text-[var(--ef-muted)]">
-        This isn't a judgment of your decision — it just means we don't have a way to check this specific thing yet. Your response has been recorded for the
+        This isn&apos;t a judgment of your decision — it just means we don&apos;t have a way to check this specific thing yet. Your response has been recorded for the
         study.
       </p>
       <Link

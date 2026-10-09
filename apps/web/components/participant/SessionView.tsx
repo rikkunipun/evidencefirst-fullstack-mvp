@@ -86,14 +86,14 @@ export function SessionView({ sessionId, initialSnapshot }: { sessionId: string;
       case "withdrawn":
         return (
           <div className="rounded-2xl border border-[var(--ef-border)] bg-white p-6">
-            <h1 className="text-lg font-semibold mb-2">You've stopped this session</h1>
+            <h1 className="text-lg font-semibold mb-2">You&apos;ve stopped this session</h1>
             <p className="text-sm text-[var(--ef-muted)]">Nothing further will be shown to you. Thank you for your time.</p>
           </div>
         );
       default:
         return (
           <div className="rounded-2xl border border-[var(--ef-border)] bg-white p-6">
-            <h1 className="text-lg font-semibold mb-2">This part isn't ready yet</h1>
+            <h1 className="text-lg font-semibold mb-2">This part isn&apos;t ready yet</h1>
             <p className="text-sm text-[var(--ef-muted)]">Session state: {snapshot.session.state}. Please check back soon.</p>
           </div>
         );

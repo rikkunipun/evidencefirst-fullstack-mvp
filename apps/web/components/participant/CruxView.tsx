@@ -87,7 +87,7 @@ export function CruxView({
   if (stage === "reason") {
     return (
       <Card className="flex flex-col gap-4">
-        <h1 className="text-lg font-semibold">What's your main reason for expecting that?</h1>
+        <h1 className="text-lg font-semibold">What&apos;s your main reason for expecting that?</h1>
         <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={3} className={inputClassName} autoFocus />
         {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
         <Button onClick={submitReason} disabled={submitting || !reason.trim()}>
