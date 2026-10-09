@@ -59,7 +59,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const pack = assignment ? EVIDENCE_PACKS[assignment.pack_id] : null;
   const sourceMap = (draft.claim_order as string[]).map((claimId) => {
     const claim = pack?.claims.find((c) => c.id === claimId);
-    return { claimId, sourceTitle: claim?.sourceTitle ?? "unknown", url: claim?.url ?? "" };
+    return { claimId, sourceTitle: claim?.sourceTitle ?? "unknown", url: claim?.url ?? "", locator: claim?.locator ?? "" };
   });
 
   const { error: deliveryError } = await supabase.from("deliveries").insert({

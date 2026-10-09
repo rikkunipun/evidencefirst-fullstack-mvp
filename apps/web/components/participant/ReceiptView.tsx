@@ -1,10 +1,13 @@
 "use client";
+import { useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { apiGet } from "@/lib/api-client";
 import type { ParticipantSessionSnapshot } from "@/lib/types/session";
 
 export function ReceiptView({ sessionId, snapshot, followupUrl }: { sessionId: string; snapshot: ParticipantSessionSnapshot; followupUrl: string | null }) {
+  const [copied, setCopied] = useState(false);
+
   async function downloadReceipt() {
     const receipt = await apiGet(`/api/sessions/${sessionId}/receipt`);
     const blob = new Blob([JSON.stringify(receipt, null, 2)], { type: "application/json" });
@@ -14,6 +17,17 @@ export function ReceiptView({ sessionId, snapshot, followupUrl }: { sessionId: s
     a.download = `evidencefirst-receipt-${sessionId.slice(0, 8)}.json`;
     a.click();
     URL.revokeObjectURL(url);
+  }
+
+  async function copyFollowupLink() {
+    if (!followupUrl) return;
+    try {
+      await navigator.clipboard.writeText(followupUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard permission can be denied; the link is still visible and selectable.
+    }
   }
 
   const belief = snapshot.beliefConfirmation?.confirmedWording;
@@ -34,9 +48,14 @@ export function ReceiptView({ sessionId, snapshot, followupUrl }: { sessionId: s
       </ul>
 
       {followupUrl ? (
-        <div className="rounded-lg border border-[var(--ef-accent)] bg-[var(--ef-accent-soft)] p-3">
-          <p className="text-sm font-medium mb-1">Save this link — it's the only way to reach your 7-day follow-up:</p>
-          <code className="text-xs break-all">{followupUrl}</code>
+        <div className="rounded-lg border border-[var(--ef-accent)] bg-[var(--ef-accent-soft)] p-3 flex flex-col gap-2">
+          <p className="text-sm font-medium">Save this link — it's the only way to reach your 7-day follow-up:</p>
+          <a href={followupUrl} className="text-sm text-[var(--ef-accent)] underline break-all">
+            {followupUrl}
+          </a>
+          <Button variant="secondary" onClick={copyFollowupLink} className="self-start">
+            {copied ? "Copied!" : "Copy link"}
+          </Button>
         </div>
       ) : (
         <p className="text-sm text-[var(--ef-muted)]">

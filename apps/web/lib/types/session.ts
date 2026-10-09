@@ -16,7 +16,14 @@ export interface SessionSnapshot {
   assignment: { condition: "fixed" | "personalized"; packId: string; packVersion: string } | null;
   draft: { id: string; claimOrder: string[]; renderedText: string; wordCount: number; contentHash: string } | null;
   approval: { disposition: string; approvedAt: string } | null;
-  delivery: { exactText: string; claimIds: string[]; deliveredAt: string; displayedAckAt: string | null } | null;
+  delivery: {
+    exactText: string;
+    exactHtml: string;
+    claimIds: string[];
+    sourceMap: { claimId: string; sourceTitle: string; url: string; locator: string }[];
+    deliveredAt: string;
+    displayedAckAt: string | null;
+  } | null;
   followup: { dueAt: string; collectedAt: string | null } | null;
 }
 

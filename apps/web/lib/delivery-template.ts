@@ -25,7 +25,7 @@ export interface DeliveryContent {
 
 export function composeDelivery(pack: EvidencePack, orderedClaims: EvidenceClaim[], confirmedReason: string): DeliveryContent {
   const intro = `Thank you for sharing your reasoning: "${confirmedReason.trim()}". Here is what the reviewed sources say.`;
-  const claimLines = orderedClaims.map((c, i) => `${i + 1}. ${c.text} (Source: ${c.sourceTitle})`);
+  const claimLines = orderedClaims.map((c, i) => `${i + 1}. ${c.text} (Source: ${c.sourceTitle} — ${c.locator})`);
   const outro = pack.boundary;
 
   const text = [intro, ...claimLines, outro].join("\n\n");
@@ -37,7 +37,7 @@ export function composeDelivery(pack: EvidencePack, orderedClaims: EvidenceClaim
         (c) =>
           `<li>${escapeHtml(c.text)} (<a href="${encodeURI(c.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(
             c.sourceTitle,
-          )}</a>)</li>`,
+          )}</a> — ${escapeHtml(c.locator)})</li>`,
       )
       .join("")}</ol>`,
     `<p>${escapeHtml(outro)}</p>`,

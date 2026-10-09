@@ -51,7 +51,7 @@ export async function loadSessionSnapshot(sessionId: string): Promise<SessionSna
       supabase.from("measurements").select("phase, score, explanation, recorded_at").eq("session_id", sessionId),
       supabase.from("assignments").select("condition, pack_id, pack_version").eq("session_id", sessionId).maybeSingle(),
       supabase.from("draft_revisions").select("id, claim_order, rendered_text, word_count, content_hash").eq("session_id", sessionId).order("created_at", { ascending: false }).limit(1),
-      supabase.from("deliveries").select("exact_text, claim_ids, delivered_at, displayed_ack_at").eq("session_id", sessionId).maybeSingle(),
+      supabase.from("deliveries").select("exact_text, exact_html, claim_ids, source_map, delivered_at, displayed_ack_at").eq("session_id", sessionId).maybeSingle(),
       supabase.from("followups").select("due_at, collected_at").eq("session_id", sessionId).maybeSingle(),
     ]);
 
@@ -119,7 +119,16 @@ export async function loadSessionSnapshot(sessionId: string): Promise<SessionSna
     assignment: assignment ? { condition: assignment.condition, packId: assignment.pack_id, packVersion: assignment.pack_version } : null,
     draft: draft?.[0] ? { id: draft[0].id, claimOrder: draft[0].claim_order, renderedText: draft[0].rendered_text, wordCount: draft[0].word_count, contentHash: draft[0].content_hash } : null,
     approval: approval?.[0] ? { disposition: approval[0].disposition, approvedAt: approval[0].approved_at } : null,
-    delivery: delivery ? { exactText: delivery.exact_text, claimIds: delivery.claim_ids, deliveredAt: delivery.delivered_at, displayedAckAt: delivery.displayed_ack_at } : null,
+    delivery: delivery
+      ? {
+          exactText: delivery.exact_text,
+          exactHtml: delivery.exact_html,
+          claimIds: delivery.claim_ids,
+          sourceMap: delivery.source_map,
+          deliveredAt: delivery.delivered_at,
+          displayedAckAt: delivery.displayed_ack_at,
+        }
+      : null,
     followup: followup ? { dueAt: followup.due_at, collectedAt: followup.collected_at } : null,
   };
 }
