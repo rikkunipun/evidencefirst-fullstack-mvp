@@ -58,7 +58,13 @@ export async function loadSessionSnapshot(sessionId: string): Promise<SessionSna
         .eq("session_id", sessionId)
         .order("created_at", { ascending: false })
         .limit(1),
-      supabase.from("belief_confirmations").select("id, revision, generated_wording, confirmed_wording, confirmed_at").eq("session_id", sessionId).order("revision", { ascending: false }),
+      supabase
+        .from("belief_confirmations")
+        .select(
+          "id, revision, generated_wording, confirmed_wording, confirmed_at, generated_decision_narrative, generated_empirical_claim, confirmed_decision_narrative, confirmed_empirical_claim",
+        )
+        .eq("session_id", sessionId)
+        .order("revision", { ascending: false }),
       supabase.from("eligibility_evaluations").select("*").eq("session_id", sessionId).order("created_at", { ascending: false }).limit(1),
       supabase.from("baseline_snapshots").select("belief_wording, scope_and_time, baseline_score, frozen_at").eq("session_id", sessionId).maybeSingle(),
       supabase.from("crux_passes").select("id, pass_number, stated_reason, confirmed_reason, hypothetical_score").eq("session_id", sessionId).order("pass_number", { ascending: true }),
@@ -108,6 +114,10 @@ export async function loadSessionSnapshot(sessionId: string): Promise<SessionSna
           generatedWording: latestConfirmation.generated_wording,
           confirmedWording: latestConfirmation.confirmed_wording,
           confirmedAt: latestConfirmation.confirmed_at,
+          generatedDecisionNarrative: latestConfirmation.generated_decision_narrative,
+          generatedEmpiricalClaim: latestConfirmation.generated_empirical_claim,
+          confirmedDecisionNarrative: latestConfirmation.confirmed_decision_narrative,
+          confirmedEmpiricalClaim: latestConfirmation.confirmed_empirical_claim,
         }
       : null,
     eligibility: eligibilities?.[0]

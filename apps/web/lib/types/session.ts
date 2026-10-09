@@ -23,7 +23,20 @@ export interface SessionSnapshot {
   messages: { id: string; turnNumber: number; role: string; content: string; createdAt: string }[];
   latestExtraction: { fields: Record<string, string | null>; candidateDriver: string; shouldStop: boolean; stopReason: string | null } | null;
   questionsAsked: number;
-  beliefConfirmation: { id: string; revision: number; generatedWording: string; confirmedWording: string | null; confirmedAt: string | null } | null;
+  beliefConfirmation: {
+    id: string;
+    revision: number;
+    generatedWording: string;
+    confirmedWording: string | null;
+    confirmedAt: string | null;
+    /** Tier 2 item 7 split — null for a row created before the split
+     * migration (an in-flight session at deploy time); the UI falls back
+     * to the single combined field in that case. */
+    generatedDecisionNarrative: string | null;
+    generatedEmpiricalClaim: string | null;
+    confirmedDecisionNarrative: string | null;
+    confirmedEmpiricalClaim: string | null;
+  } | null;
   eligibility: { current: string; specific: string; causal: string; consequential: string; checkable: string; safe: string; disposition: string; reasons: Record<string, string> } | null;
   baseline: { beliefWording: string; scopeAndTime: string; baselineScore: number; frozenAt: string } | null;
   cruxPasses: { passNumber: number; statedReason: string; confirmedReason: string | null; hypotheticalScore: number | null }[];

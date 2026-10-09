@@ -6,7 +6,7 @@ import { transitionSession } from "@/lib/session-transition";
 import { mergeFields, firstMissingField, type FieldMap } from "@/lib/extraction-merge";
 import { runDiscoveryTurn, type DiscoveryMessageForModel } from "@/lib/ai/discovery";
 import { MIXED_DRIVER_QUESTION, MIXED_DRIVER_FOLLOWUP, RECOVERY_MESSAGE, hasCoreFields, isValidationFailure, mixedDriverNextQuestion } from "@/lib/ai/discovery-pure";
-import { generateBeliefWording } from "@/lib/belief-wording";
+import { generateBeliefWording, generateDecisionNarrative, generateEmpiricalClaim } from "@/lib/belief-wording";
 import { DISCOVERY_QUESTION_BUDGET } from "@/lib/constants";
 import { recordAuditEvent } from "@/lib/audit";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -268,7 +268,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   // should_stop === true: either move to confirmation, or park honestly.
   if (turn.stop_reason === "candidate_ready" && hasCore && !unsafe) {
     const generatedWording = generateBeliefWording(fieldsAfter);
-    await supabase.from("belief_confirmations").insert({ session_id: id, revision: 1, generated_wording: generatedWording });
+    await supabase.from("belief_confirmations").insert({
+      session_id: id,
+      revision: 1,
+      generated_wording: generatedWording,
+      generated_decision_narrative: generateDecisionNarrative(fieldsAfter),
+      generated_empirical_claim: generateEmpiricalClaim(fieldsAfter),
+    });
     const t = await transitionSession(supabase, id, "discovery", currentRevision, ["confirmation"]);
     if (!t.ok) return NextResponse.json({ error: "server_error", reason: t.reason }, { status: 500 });
     await recordAuditEvent({ actorType: "system", action: "discovery_ready_for_confirmation", entityType: "sessions", entityId: id, after: fieldsAfter });

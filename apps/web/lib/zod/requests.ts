@@ -50,6 +50,17 @@ export const eligibilityAnswersSchema = z.object({
   consequenceEvidence: z.string().trim().max(500).optional().nullable(),
 });
 
+/**
+ * Tier 2 item 7: the decision narrative and the current empirical claim
+ * are confirmed as two separate fields, never one free-text blob — the
+ * server composes the combined sentence (combineBeliefWording), it's
+ * never accepted raw from the client.
+ */
+export const confirmBeliefSchema = z.object({
+  decisionNarrative: z.string().trim().min(1).max(300),
+  empiricalClaim: z.string().trim().min(1).max(300),
+});
+
 export const baselineSchema = z.object({
   baselineScore: z.number().int().min(0).max(10),
 });
