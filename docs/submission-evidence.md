@@ -1,71 +1,156 @@
-# Submission evidence
+# EvidenceFirst — submission evidence (2026-10-09)
 
-Branch `fullstack-mvp`, worktree of reference commit `f830f11c1b9e870c8edd18fbb9a9b1512ee8a293` (that commit and `dist/` are untouched — checksums in `docs/reference-manifest.md`).
+Everything in this document is drawn from actual runs performed during
+this repair/build session — real model calls, real Supabase database,
+real Vercel production deployment. Nothing here is inferred, estimated,
+or extrapolated beyond what a specific command, test, or request actually
+produced. Mocked results and live-model results are labelled separately
+throughout. **No claim in this document concerns persuasion efficacy or
+belief change from a small pilot** — three (or even a dozen) participants
+cannot establish that evidence delivery changes beliefs; that question is
+explicitly out of scope for this evidence.
 
-## Repository state
+## Current state
 
-- Full commit history on `fullstack-mvp`: plan → scaffold/schema → slice 1 (consent/auth) → slice 2 (discovery/gates/crux/assignment) → slice 3 (review/delivery) → slice 4 (measurement/follow-up/export) → this file.
-- Every commit's message states what was actually verified, not just written.
+- **Production:** `https://evidencefirst-fullstack-mvp.vercel.app`
+- **Deployed commit:** `27762fc791d77ae2bff8f63704ab26ca733e5112` (branch `fullstack-mvp`)
+- **Rollback checkpoint:** git tag `checkpoint-pre-auto` → `f0a6006` (the
+  commit live before automatic delivery shipped). To roll back: re-promote
+  the deployment at `https://evidencefirst-fullstack-8tlb0mlxo-rikkunipuns-projects.vercel.app`
+  in Vercel, or set `DELIVERY_MODE=manual` and redeploy.
+- **DELIVERY_MODE:** unset in the environment; defaults to `auto` in code.
+- **Repository:** private GitHub repo, `https://github.com/rikkunipun/evidencefirst-fullstack-mvp`
+  (branches `fullstack-mvp` and `auto-delivery` pushed; an older, unrelated
+  local `main` branch was not force-pushed).
 
-## What is real vs. what is not
+## What was fixed, in the order it was found
 
-**Real, verified against the live stack (Supabase project + OpenAI API), this session:**
-- Full participant journey, discovery through delivery, run live at least twice (one full pass through researcher approval and delivery; one run where the model itself judged the case not-stable-enough and parked it — both are legitimate real outcomes).
-- All six eligibility gates exercised with real pass/fail reasoning.
-- Crux loop with a real AI classification call.
-- Real idempotent 1:1 permuted-block assignment via a Postgres function, verified both for first-assignment and retry-is-idempotent behavior.
-- Real researcher login, draft generation, approval, immutable delivery commit.
-- Real reversal QA: an overbroad claim refused with zero factual claims; an exact approved claim confirmed as supported (so the refusal path isn't a blanket "always refuse"); a verbatim claim from a *different* enabled pack still refused (true membership check, not keyword match).
-- Real post-measurement, follow-up creation, "not yet due" enforcement, receipt generation, and refresh/resume — all byte-exact against what was actually persisted.
-- **Public production deployment: https://evidencefirst-fullstack-mvp.vercel.app** — real, verified from a clean curl/Playwright session with no prior cookies: landing/participate pages load, `/admin` correctly redirects unauthenticated, a real session + real OpenAI discovery turn works, researcher login/draft/approve/reversal all verified via Playwright against the live URL, zero secret leakage across every HTML response and JS chunk. Two real bugs were caught and fixed during this verification (see `docs/deployment.md`): a formatting issue in `.env.local` that would have shipped a broken OpenAI auth header, and a missing production env var that caused `/admin` to 500 instead of redirect.
+1. **Blank-park bug (confirmed root cause via live-model repro, not
+   assumed):** the model cited `field_evidence` as `"<id>: \"<quote>\""`
+   rather than a bare message ID; an exact-match provenance check nulled
+   honestly-cited fields, and an empty-string park reason combined with a
+   nullish-coalescing fallback produced a blank park screen for factual
+   stories. Fixed with format-tolerant citation resolution (still rejects
+   any citation with no real valid ID) and a corrected prompt.
+2. **Mixed-driver preference misclassification, latency measurement,
+   waiting-screen polling, in-flight retry handling, pilot-label loss on
+   retry** — Tier 1, all verified against production with three fresh
+   sessions (mixed study, gym/bus, diagram preference) before and after.
+3. **Decision/claim split, researcher review taxonomy (contradicts/
+   outside_scope), free-text topic proposal, follow-up link reissue,
+   withdrawal-blocks-delivery atomicity** — Tier 2, verified with a full
+   local journey (discovery → confirmation → eligibility → baseline →
+   crux → assignment → researcher review → delivery → measurement →
+   follow-up → reissue) plus the outside_scope and inaccurate-brief
+   review paths. This run found and fixed two real bugs:
+   `legacyDisposition()` mapping "supports" to a disposition value the DB
+   check constraint didn't accept, and the OpenAI client having no
+   explicit timeout (one real call hung ~11 minutes before this session
+   added a 20s client-side timeout).
+4. **Automatic delivery** (removing the mandatory human-review
+   dependency) — a separate, explicitly-scoped build: deterministic
+   verbatim-claim delivery (unchanged, confirmed by inspection — no model
+   call ever composes delivered text), a closed per-pack claim-kind
+   policy with a fixed evidence relation per kind, a classifier that
+   picks a kind or none/unclear (server-validated, never force-matched),
+   an atomic Postgres function for delivery, system-validation records
+   distinct from human reviewer records (DB constraint-enforced), and a
+   `DELIVERY_MODE` switch with the manual flow kept fully intact as a
+   fallback. This step found and fixed: a missing `approvals.template_version`
+   column (every real auto-delivery attempt 500'd until fixed), and a
+   policy bug where the only kinds were "contradicts" — making a
+   supported belief structurally unreachable until a "supports" kind was
+   added for every claim direction.
 
-**Explicitly NOT real:**
-- No real participants have been recruited or interviewed by me. `docs/pilot-script.md` is prepared for the owner to run three real 15–20 minute sessions (Sai Teja, Akhilesh, Anand) separately.
-- Any session IDs, participant codes, or receipts referenced in this document from automated testing were deleted after verification (see git commit messages for the specific cleanup steps) — they are not part of the submitted dataset.
-- No claim of "efficacy" or "which condition performed better" is made anywhere in this codebase or these docs. The experiment is order-personalization only (same five claims, reordered), per the brief's explicit scope limitation.
+## Test results — mocked vs. real, kept separate
 
-## Test evidence
+**Unit tests (mocked/pure, no network, no database): 107/107 pass.**
+Covers: provenance citation resolution, mixed-driver routing, the
+required regression (`candidate_ready` + provenance-nulled core field →
+repair/recovery, never a blank park), state-machine transition legality,
+the approval disposition mapping (every (briefAccurate, evidenceRelation)
+combination against the DB's allowed values), the pack policy's
+structural integrity (every pack has ≥1 supports kind; every contradicts
+kind has a named supports mirror grounded in the same claim IDs; no
+missing grounding), and the auto-delivery routing decision.
 
-- 61 Vitest unit tests across 9 files (eligibility gates incl. every fail/unknown case, state-machine transitions incl. terminal-state rejection, crux two-pass cap, permuted-block assignment balance/determinism/exhaustion, evidence pack invariants incl. exact-match reversal lookup and cross-pack rejection, follow-up due-date math, extraction field-merge semantics, delivery-template word-budget equality and content-hash determinism, discovery provenance enforcement incl. fabricated-citation rejection).
-- Playwright e2e, split by determinism:
-  - `eligible-activity-flow.spec.ts` — live OpenAI + live Supabase, full discovery→delivery→measurement→follow-up→receipt→resume. Non-deterministic by nature (a real model is making real judgment calls); the one documented full pass is the "at least one live-model check" the brief requires.
-  - `post-delivery-flow.spec.ts`, `parked-flow.spec.ts`, `reversal-qa.spec.ts`, `mobile-layout.spec.ts` — 13 deterministic tests, DB-seeded or pure-logic, repeatable on every run (all 13 passing). These are the primary signal.
-- `tsc --noEmit` and `next build` clean throughout; re-verified after every slice.
+tsc, lint, and `next build` all pass at the deployed commit.
 
-## Claim audit (how "every delivered factual claim maps to an evidence-unit version" is actually true)
+**Real-model, real-database end-to-end tests:**
 
-Not a post-hoc checker — structural. `lib/delivery-template.ts` composes delivered text from exactly three ingredients: (1) the pack's approved claim text, verbatim, selected from `lib/evidence.ts` (which is the exact same content as the seeded `evidence_units` DB rows — see `docs/reference-manifest.md` / `db/seed.ts`); (2) the pack's approved boundary text, verbatim; (3) one fixed connective template with the participant's own (HTML-escaped) reason text. There is no code path from a model response into delivered text. `lib/content-hash.ts` binds the approval to the exact text+claim-order+template-version triple, and the approval route re-checks that hash before committing the immutable `deliveries` row.
+- `tests/e2e/eligible-activity-flow.spec.ts` — full manual-mode journey
+  (discovery → confirmation → eligibility → baseline → crux → assignment
+  → researcher login → draft → approve → delivered → ack → post-score →
+  follow-up, including link reissue after a simulated refresh). Pass.
+- `tests/e2e/review-outcomes.spec.ts` — outside_scope review (terminal
+  refusal) and inaccurate-brief review (returns to `assigned` for a fresh
+  draft, not a terminal refusal). Pass, both.
+- `tests/e2e/auto-delivery.spec.ts` — 5 tests, no researcher login
+  anywhere: a supports-direction claim reaching delivery/measurement/
+  receipt; an out-of-scope claim ending discovery-only with zero claims
+  delivered; idempotent refresh (no duplicate delivery); withdrawal
+  blocking release outright; a genuine preference still parking at
+  discovery without ever reaching the auto-deliver pipeline. Pass, all 5.
 
-## Limitations, tied to brief acceptance criteria
+**Real-model classifier check, 16 natural claims** (not written to match
+policy wording), across all three packs, in four categories — empirical
+belief, preference-only, vague, and out-of-scope, plus six written to
+match a "supports" direction:
 
-| Acceptance criterion | Status |
-|---|---|
-| Consent → text session, unassisted | ✅ built and live-tested |
-| Push-to-talk, mic denial | ❌ **not built** — out of scope per brief §12 ("ship the reliable text path first... voice... deferred") |
-| Refresh restores correct state at every step | ✅ tested for delivered/ack_recorded/measured/followup_due; discovery-mid-conversation refresh not separately tested (would need a paused live-model session) |
-| Behavior-gap/parked case, clear reason | ✅ tested deterministically (no-cost gate, no-pack/checkable gate) |
-| Eligible case reaches baseline→assignment→approval→delivery→measurement | ✅ live-tested |
-| Fixed/personalized equal claim count & word budget | ✅ unit-tested (`delivery-template.test.ts`, `evidence.test.ts`) |
-| Every delivered claim has an enabled evidence-unit ID + source link | ✅ structural guarantee, see above |
-| Unsupported-domain case cannot reach persuasion | ✅ tested deterministically (`checkable` gate fails for topics with no enabled pack) |
-| Reversal run refuses, zero delivered claims | ✅ tested live |
-| Researcher sees complete trace, exports it | ✅ `/admin/sessions/[id]` 11-section trace; `/admin/export` csv/json |
-| OpenAI key absent from client bundles/logs | ✅ server-only everywhere (`server-only` package enforced); re-verified against the actual deployed production bundle — grepped every loaded JS chunk and HTML response, zero matches |
-| Production works from an unrelated device/account | ✅ **deployed and verified**: https://evidencefirst-fullstack-mvp.vercel.app — see `docs/deployment.md` for exactly what was checked |
-| Evidence library editing actually gates delivery | ⚠️ **documented simplification** — `/admin/evidence` reads/displays the DB rows; delivery composition reads the in-code constants (identical content, same source). Toggling `enabled` in the DB does not yet change what's delivered. |
-| Reason-matched (non-order) personalization | ❌ explicitly out of scope per brief — only `order_personalization_v1` implemented |
-| Three real pilot interviews | ❌ not run by me — `docs/pilot-script.md` prepared for the owner |
+| Category | Count | Outcome |
+|---|---|---|
+| Empirical belief (contradicts-direction) | 3 | 3/3 matched the intended kind |
+| Empirical belief (supports-direction) | 6 | 5/6 matched the intended kind; 1 (deliberately soft wording) returned `unclear` |
+| Preference-only | 3 | 3/3 correctly returned `none` |
+| Vague | 2 | 1 `unclear`, 1 `none` (reasonable either way) |
+| Out-of-scope | 2 | 2/2 correctly returned `none` |
 
-## What a fresh environment needs to reproduce this (see also `docs/deployment.md`)
+No hallucinated category, no cross-pack match, no force-match, across all
+16 real model calls.
 
-```sh
-cd apps/web
-npm install
-cp .env.example .env.local   # fill in real values
-npm run db:migrate
-npm run db:seed
-node scripts/provision-admins.mjs   # prints a one-time researcher password
-npm run dev
-```
+## Production smoke test (post-deploy, no login)
 
-Test commands: `npm run test:unit` (Vitest), `npm run test:e2e` (Playwright; starts its own assumptions about a running `npm run dev` on localhost:3000 — see `playwright.config.ts`), `npm run build` (production build + typecheck).
+Three fresh sessions against the live deployment, each marked `is_test=true`:
+
+| Case | Outcome | Notes |
+|---|---|---|
+| Supports-belief story | Delivered → ack → measured → receipt | `reviewType: "automatic"`, `reviewDescription: "system validation"`, policy/pack/template versions all populated |
+| Pure preference | Parked at discovery | Specific reason shown, not blank |
+| Out-of-scope claim | Discovery-only (parked at auto-deliver) | Exact required message, zero claims delivered |
+
+**Discovery-turn latency across all three runs** (12 discovery turns
+total): **p50 ≈ 11.65s, max ≈ 22.6s** (one outlier; the other 11 turns
+ranged 8.9–12.8s). The 22.6s turn cannot be conclusively attributed to a
+single slow model call versus a client-side 20s-timeout-then-retry — the
+server logs the phase breakdown per turn, but Vercel's log CLI only
+streams live runtime logs, and that specific request was no longer in
+the live window by the time it was checked. This is reported as an open
+question, not a resolved one.
+
+## Known, explicitly deferred (not claimed fixed)
+
+- The pack policy table (`lib/pack-policy.ts`) is marked a draft; it
+  covers a hand-picked set of claim directions per pack, not an
+  exhaustive one. A natural claim outside its current coverage correctly
+  returns `none` (discovery-only) rather than a wrong match — conservative
+  by design, but means recall is incomplete.
+- A full transactional rewrite of the entire approve-and-deliver sequence
+  as one atomic unit (beyond the withdrawal check, which is enforced
+  atomically via a database trigger) was not attempted.
+- Multi-session resume, persistent cross-instance rate limiting, and a
+  full concurrent-race test matrix remain out of scope (`docs/deferred.md`).
+- A fast-mode/alternate-model latency benchmark was never run — there is
+  no record of it in this session, and nothing related was deployed.
+
+## What this evidence does *not* establish
+
+This document reports functional correctness and reproducibility of the
+discovery → eligibility → evidence-delivery → measurement pipeline, under
+both manual and automatic review modes, against real model calls and a
+real database. It does **not** establish, and makes no claim toward,
+whether seeing audited evidence actually changes what any participant
+believes. That would require a pilot with real participants, pre/post
+measurement, and a sample size this document's three synthetic smoke-test
+sessions cannot provide — and even a successful small pilot (e.g. three
+people) would show usability and completion, not causal persuasion
+efficacy.
