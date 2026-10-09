@@ -107,6 +107,37 @@ const CASES: { label: string; pack: keyof typeof PACK_POLICIES; claim: string }[
     pack: "learning",
     claim: "My therapist said I should get a dyslexia assessment, but I just used audio books instead of reading, and I think that fixed the issue completely.",
   },
+  // 6 new supported-belief claims (policy v2), 2 per pack
+  {
+    label: "11. activity / supported belief (short walks still count)",
+    pack: "activity",
+    claim: "I went for three separate 10-minute walks instead of one long gym session, and I still think that adds up and counts toward my weekly activity.",
+  },
+  {
+    label: "12. activity / supported belief (bodyweight counts as strength)",
+    pack: "activity",
+    claim: "I did push-ups and squats at home instead of using the machines at the gym, and I believe that still counts as real strength training even without equipment.",
+  },
+  {
+    label: "13. study / supported belief (practice testing helps)",
+    pack: "study",
+    claim: "I did practice questions instead of just rereading my notes before the exam, because I genuinely believe practice questions help me remember the material better.",
+  },
+  {
+    label: "14. study / supported belief (rereading is low value)",
+    pack: "study",
+    claim: "I switched from rereading my notes to making flashcards instead, because I've come to think rereading alone doesn't really do much for retention.",
+  },
+  {
+    label: "15. learning / supported belief (style-matching doesn't reliably help)",
+    pack: "learning",
+    claim: "I used to think matching the teaching style to how I learn best would make a big difference, but honestly I don't think it reliably helps anymore.",
+  },
+  {
+    label: "16. learning / supported belief (small benefit acknowledged)",
+    pack: "learning",
+    claim: "I chose a mixed video-and-diagram course instead of a text-only one, and I think there's at least some small benefit to matching the format sometimes, even if it's not huge.",
+  },
 ];
 
 async function main() {
