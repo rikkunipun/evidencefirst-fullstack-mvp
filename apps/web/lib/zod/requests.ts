@@ -102,3 +102,14 @@ export const adminReversalSchema = z.object({
 export const adminDraftSchema = z.object({
   // No body needed beyond the session id in the route; kept for future extension.
 });
+
+/**
+ * General authorized path for marking sessions as synthetic/QA test data —
+ * so a pilot label is never the only thing separating test fixtures from
+ * real participant data. Exact session IDs only, no text/label matching.
+ */
+export const adminMarkTestSchema = z.object({
+  sessionIds: z.array(z.string().uuid()).min(1).max(100),
+  testRunId: z.string().trim().min(1).max(60),
+  reason: z.string().trim().min(1).max(300),
+});
