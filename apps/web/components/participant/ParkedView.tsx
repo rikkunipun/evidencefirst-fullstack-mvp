@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/Card";
-import type { SessionSnapshot } from "@/lib/types/session";
+import type { ParticipantSessionSnapshot } from "@/lib/types/session";
 
-export function ParkedView({ snapshot }: { snapshot: SessionSnapshot }) {
+export function ParkedView({ snapshot }: { snapshot: ParticipantSessionSnapshot }) {
   return (
     <Card className="flex flex-col gap-4">
       <h1 className="text-lg font-semibold">Thank you for sharing this</h1>

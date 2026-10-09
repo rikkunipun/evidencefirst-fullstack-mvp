@@ -1,9 +1,21 @@
 import "server-only";
 import { getServiceClient } from "./supabase/service-client";
-import type { SessionSnapshot } from "./types/session";
+import type { SessionSnapshot, ParticipantSessionSnapshot } from "./types/session";
 import type { SessionState } from "./state-machine";
 
-export type { SessionSnapshot };
+export type { SessionSnapshot, ParticipantSessionSnapshot };
+
+/**
+ * The only shape a participant's own routes/pages may return. Strips
+ * condition/assignment, draft text, reviewer disposition, and raw model
+ * extraction reasoning — none of that is this participant's business,
+ * before or after delivery. Admin routes must keep using the full
+ * `loadSessionSnapshot` result directly; never pass it through here.
+ */
+export function toParticipantSnapshot(full: SessionSnapshot): ParticipantSessionSnapshot {
+  const { assignment, draft, approval, latestExtraction, ...rest } = full;
+  return rest;
+}
 
 /**
  * Everything needed to render the participant's current step, or to drive

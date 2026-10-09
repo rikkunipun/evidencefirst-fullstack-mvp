@@ -4,9 +4,9 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { inputClassName } from "@/components/ui/Field";
 import { apiPost } from "@/lib/api-client";
-import type { SessionSnapshot } from "@/lib/types/session";
+import type { ParticipantSessionSnapshot } from "@/lib/types/session";
 
-export function DiscoveryView({ sessionId, snapshot, onAdvance }: { sessionId: string; snapshot: SessionSnapshot; onAdvance: () => Promise<void> }) {
+export function DiscoveryView({ sessionId, snapshot, onAdvance }: { sessionId: string; snapshot: ParticipantSessionSnapshot; onAdvance: () => Promise<void> }) {
   const [answer, setAnswer] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);

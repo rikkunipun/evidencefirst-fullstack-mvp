@@ -19,3 +19,14 @@ export interface SessionSnapshot {
   delivery: { exactText: string; claimIds: string[]; deliveredAt: string; displayedAckAt: string | null } | null;
   followup: { dueAt: string; collectedAt: string | null } | null;
 }
+
+/**
+ * What a participant's own API responses and page props may contain.
+ * Deliberately omits fields that are internal to the experiment/research
+ * process and must never reach the participant before (or regardless of)
+ * delivery: experimental condition/assignment, draft text, and reviewer
+ * disposition. `delivery` itself is safe to keep as-is — that row only
+ * exists in the database after a researcher has approved it, so there is
+ * no pre-approval leak path through it.
+ */
+export type ParticipantSessionSnapshot = Omit<SessionSnapshot, "assignment" | "draft" | "approval" | "latestExtraction">;

@@ -14,17 +14,17 @@ import { DeliveryView } from "./DeliveryView";
 import { PostMeasurementView } from "./PostMeasurementView";
 import { ReceiptView } from "./ReceiptView";
 import { apiGet, apiPost } from "@/lib/api-client";
-import type { SessionSnapshot } from "@/lib/types/session";
+import type { ParticipantSessionSnapshot } from "@/lib/types/session";
 
 const PROCEEDABLE_CLASSIFICATIONS = new Set(["current_claim", "near_term_test"]);
 
-export function SessionView({ sessionId, initialSnapshot }: { sessionId: string; initialSnapshot: SessionSnapshot }) {
+export function SessionView({ sessionId, initialSnapshot }: { sessionId: string; initialSnapshot: ParticipantSessionSnapshot }) {
   const [snapshot, setSnapshot] = useState(initialSnapshot);
   const [withdrawing, setWithdrawing] = useState(false);
   const [followupUrl, setFollowupUrl] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
-    const latest = await apiGet<SessionSnapshot>(`/api/sessions/${sessionId}`);
+    const latest = await apiGet<ParticipantSessionSnapshot>(`/api/sessions/${sessionId}`);
     setSnapshot(latest);
   }, [sessionId]);
 

@@ -2,9 +2,9 @@
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { apiGet } from "@/lib/api-client";
-import type { SessionSnapshot } from "@/lib/types/session";
+import type { ParticipantSessionSnapshot } from "@/lib/types/session";
 
-export function ReceiptView({ sessionId, snapshot, followupUrl }: { sessionId: string; snapshot: SessionSnapshot; followupUrl: string | null }) {
+export function ReceiptView({ sessionId, snapshot, followupUrl }: { sessionId: string; snapshot: ParticipantSessionSnapshot; followupUrl: string | null }) {
   async function downloadReceipt() {
     const receipt = await apiGet(`/api/sessions/${sessionId}/receipt`);
     const blob = new Blob([JSON.stringify(receipt, null, 2)], { type: "application/json" });

@@ -4,9 +4,9 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { inputClassName } from "@/components/ui/Field";
 import { apiPost } from "@/lib/api-client";
-import type { SessionSnapshot } from "@/lib/types/session";
+import type { ParticipantSessionSnapshot } from "@/lib/types/session";
 
-export function ConfirmationView({ sessionId, snapshot, onAdvance }: { sessionId: string; snapshot: SessionSnapshot; onAdvance: () => Promise<void> }) {
+export function ConfirmationView({ sessionId, snapshot, onAdvance }: { sessionId: string; snapshot: ParticipantSessionSnapshot; onAdvance: () => Promise<void> }) {
   const generated = snapshot.beliefConfirmation?.generatedWording ?? "";
   const [wording, setWording] = useState(generated);
   const [submitting, setSubmitting] = useState(false);

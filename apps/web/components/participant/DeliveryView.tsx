@@ -3,9 +3,9 @@ import { useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { apiPost } from "@/lib/api-client";
-import type { SessionSnapshot } from "@/lib/types/session";
+import type { ParticipantSessionSnapshot } from "@/lib/types/session";
 
-export function DeliveryView({ sessionId, snapshot, onAdvance }: { sessionId: string; snapshot: SessionSnapshot; onAdvance: () => Promise<void> }) {
+export function DeliveryView({ sessionId, snapshot, onAdvance }: { sessionId: string; snapshot: ParticipantSessionSnapshot; onAdvance: () => Promise<void> }) {
   const [busy, setBusy] = useState(false);
 
   async function acknowledge() {

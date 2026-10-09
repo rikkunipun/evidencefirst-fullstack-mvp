@@ -5,11 +5,11 @@ import { Button } from "@/components/ui/Button";
 import { inputClassName } from "@/components/ui/Field";
 import { ScorePicker } from "./ScorePicker";
 import { apiPost } from "@/lib/api-client";
-import type { SessionSnapshot } from "@/lib/types/session";
+import type { ParticipantSessionSnapshot } from "@/lib/types/session";
 
 type Stage = "reason" | "confirm" | "hypothetical";
 
-function initialStage(snapshot: SessionSnapshot): Stage {
+function initialStage(snapshot: ParticipantSessionSnapshot): Stage {
   const last = snapshot.cruxPasses[snapshot.cruxPasses.length - 1];
   if (!last) return "reason";
   if (!last.confirmedReason) return "confirm";
@@ -24,7 +24,7 @@ export function CruxView({
   onParked,
 }: {
   sessionId: string;
-  snapshot: SessionSnapshot;
+  snapshot: ParticipantSessionSnapshot;
   onAdvance: () => Promise<void>;
   onParked: () => Promise<void>;
 }) {
