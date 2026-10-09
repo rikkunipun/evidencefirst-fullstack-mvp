@@ -107,12 +107,16 @@ async function driveToAssigned(request: APIRequestContext, testRunId: string, em
 }
 
 test.describe("Auto-delivery test matrix (no researcher login anywhere)", () => {
-  test("(a)+(b) a claim matching a real policy kind reaches evidence, measurement, and receipt; score is free to stay unchanged or increase", async ({ request }) => {
+  test("(a)+(b) a SUPPORTED claim reaches evidence, measurement, and receipt; score is free to stay unchanged or increase", async ({ request }) => {
     test.setTimeout(180_000);
+    // Policy v2: this is a supports-direction claim (short chunks of
+    // activity count), not a contradicts one — proving a supported
+    // belief is actually reachable through the full pipeline, not just
+    // in the unit-level policy table.
     const sessionId = await driveToAssigned(
       request,
       "e2e-auto-delivers",
-      "I expected that brisk walking cannot count as moderate-intensity aerobic activity under adult activity recommendations.",
+      "I expected that three separate short walks spread across the day still add up and count toward my weekly activity, the same as one longer session.",
     );
     try {
       const auto = await postJson(request, `/api/sessions/${sessionId}/auto-deliver`, {});
@@ -126,12 +130,13 @@ test.describe("Auto-delivery test matrix (no researcher login anywhere)", () => 
       expect(snapshot.delivery.sourceMap.length).toBeGreaterThan(0);
       expect(snapshot.delivery.sourceMap.every((s: { url: string }) => s.url)).toBe(true);
 
-      // No admin action anywhere — approval record is a system decision.
+      // No admin action anywhere — approval record is a system decision,
+      // and this is specifically the SUPPORTS direction (policy v2 fix).
       const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } });
       const { data: approvalRows } = await supabase.from("approvals").select("is_system, reviewer_email, evidence_relation, policy_version, pack_version").eq("id", (await supabase.from("deliveries").select("approval_id").eq("session_id", sessionId).single()).data!.approval_id);
       expect(approvalRows?.[0].is_system).toBe(true);
       expect(approvalRows?.[0].reviewer_email).toBeNull();
-      expect(approvalRows?.[0].evidence_relation).toBe("contradicts");
+      expect(approvalRows?.[0].evidence_relation).toBe("supports");
 
       const ack = await postJson(request, `/api/sessions/${sessionId}/ack`, {});
       expect(ack.status).toBe(200);
