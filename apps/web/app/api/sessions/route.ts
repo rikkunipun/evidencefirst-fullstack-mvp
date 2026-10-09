@@ -10,6 +10,7 @@ import {
 } from "@/lib/capability";
 import { recordAuditEvent } from "@/lib/audit";
 import { checkRateLimit, clientIpFrom } from "@/lib/rate-limit";
+import { getEnv } from "@/lib/env";
 
 const SESSION_CREATE_LIMIT = 10;
 const SESSION_CREATE_WINDOW_MS = 10 * 60 * 1000;
@@ -47,7 +48,18 @@ export async function POST(req: NextRequest) {
 
   const { data: session, error: sessionError } = await supabase
     .from("sessions")
-    .insert({ participant_id: participantId, state: "consented", pack_topic: topicKey, pilot_label: body.pilotLabel ?? null })
+    .insert({
+      participant_id: participantId,
+      state: "consented",
+      pack_topic: topicKey,
+      pilot_label: body.pilotLabel ?? null,
+      // Item 8: consent version on the session row itself (consent_events
+      // also keeps its own copy — unchanged). Item 7: a write-once
+      // snapshot of which delivery mode was active at creation, for audit
+      // clarity — does not govern runtime behavior (the live env var does).
+      consent_version: body.consentVersion,
+      delivery_mode: getEnv().DELIVERY_MODE,
+    })
     .select("id")
     .single();
   if (sessionError || !session) {

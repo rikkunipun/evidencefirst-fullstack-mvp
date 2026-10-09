@@ -18,7 +18,10 @@ export const SITUATION_CARDS = [
 export const PILOT_LABEL_PATTERN = /^[A-Za-z0-9-]{1,20}$/;
 
 export const createSessionSchema = z.object({
-  consentVersion: z.literal("v1"),
+  // "v2" (item 8): added the automatic-evidence-selection/audit-afterwards
+  // disclosure, replacing the old "a researcher may review" framing. "v1"
+  // stays accepted for anything already pointed at the old copy.
+  consentVersion: z.enum(["v1", "v2"]),
   situationCard: z.enum(SITUATION_CARDS),
   goal: z.string().trim().max(300).optional().nullable(),
   decisionCueId: z.string().trim().max(60).optional().nullable(),

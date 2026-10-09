@@ -46,7 +46,7 @@ function ParticipateForm() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          consentVersion: "v1",
+          consentVersion: "v2",
           situationCard,
           goal: goal.trim() || null,
           // Both are preserved: a participant may pick a card AND type their
@@ -73,7 +73,7 @@ function ParticipateForm() {
           <ul className="list-disc pl-5 text-sm text-[var(--ef-muted)] flex flex-col gap-2">
             <li>This is an AI-assisted research prototype. Your answers are sent to our model provider to generate the next question.</li>
             <li>We record your typed answers, your confirmed statement, and your confidence scores.</li>
-            <li>A researcher may review your session for this study.</li>
+            <li>Evidence is selected and checked automatically against a fixed set of verified sources — not written freely by the AI model. Researchers audit results afterwards.</li>
             <li>You can stop at any time; stopping cancels anything not yet delivered to you.</li>
             <li>This does not cover political, religious, identity, crisis, addiction-treatment, or individualized medical/legal/financial topics.</li>
             <li>This study is for adults only. You must be 18 or older to take part.</li>

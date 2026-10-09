@@ -16,6 +16,10 @@ interface ExportRow {
   followupScore: number | null;
   claimIds: string[] | null;
   deliveredAt: string | null;
+  /** Item 8/10: describe automation honestly, never a blanket claim either way. */
+  deliveryModeAtCreation: string | null;
+  reviewType: "automatic" | "researcher" | null;
+  claimKind: string | null;
 }
 
 /** Sanitizes a cell so it can't break CSV structure or be interpreted as a spreadsheet formula. */
@@ -40,7 +44,7 @@ export async function GET(req: NextRequest) {
 
   let query = supabase
     .from("sessions")
-    .select("id, state, park_reason, pack_topic, participant_id, is_test")
+    .select("id, state, park_reason, pack_topic, participant_id, is_test, delivery_mode, claim_kind")
     .not("state", "in", '("consented","context","discovery","confirmation","eligibility_check")');
   if (!includeTest) query = query.eq("is_test", false);
   const { data: sessions } = await query;
@@ -54,10 +58,16 @@ export async function GET(req: NextRequest) {
       supabase.from("baseline_snapshots").select("baseline_score").eq("session_id", s.id).maybeSingle(),
       supabase.from("measurements").select("phase, score").eq("session_id", s.id),
       supabase.from("followups").select("score").eq("session_id", s.id).maybeSingle(),
-      supabase.from("deliveries").select("claim_ids, delivered_at").eq("session_id", s.id).maybeSingle(),
+      supabase.from("deliveries").select("claim_ids, delivered_at, approval_id").eq("session_id", s.id).maybeSingle(),
     ]);
     const scoresByPhase: Record<string, number> = {};
     for (const m of measurements ?? []) scoresByPhase[m.phase] = m.score;
+
+    let reviewType: "automatic" | "researcher" | null = null;
+    if (delivery?.approval_id) {
+      const { data: approval } = await supabase.from("approvals").select("is_system").eq("id", delivery.approval_id).maybeSingle();
+      reviewType = approval?.is_system ? "automatic" : "researcher";
+    }
 
     rows.push({
       participantCode: participant?.participant_code ?? "unknown",
@@ -73,6 +83,9 @@ export async function GET(req: NextRequest) {
       followupScore: followup?.score ?? null,
       claimIds: delivery?.claim_ids ?? null,
       deliveredAt: delivery?.delivered_at ?? null,
+      deliveryModeAtCreation: s.delivery_mode ?? null,
+      reviewType,
+      claimKind: s.claim_kind ?? null,
     });
   }
 
@@ -81,7 +94,24 @@ export async function GET(req: NextRequest) {
   }
 
   const headers = Object.keys(
-    rows[0] ?? { participantCode: "", sessionId: "", isTest: "", state: "", parkReason: "", packId: "", condition: "", baselineScore: "", preEvidenceScore: "", postEvidenceScore: "", followupScore: "", claimIds: "", deliveredAt: "" },
+    rows[0] ?? {
+      participantCode: "",
+      sessionId: "",
+      isTest: "",
+      state: "",
+      parkReason: "",
+      packId: "",
+      condition: "",
+      baselineScore: "",
+      preEvidenceScore: "",
+      postEvidenceScore: "",
+      followupScore: "",
+      claimIds: "",
+      deliveredAt: "",
+      deliveryModeAtCreation: "",
+      reviewType: "",
+      claimKind: "",
+    },
   );
   const csvLines = [headers.join(","), ...rows.map((r) => headers.map((h) => csvCell((r as unknown as Record<string, unknown>)[h])).join(","))];
   return new NextResponse(csvLines.join("\n"), {

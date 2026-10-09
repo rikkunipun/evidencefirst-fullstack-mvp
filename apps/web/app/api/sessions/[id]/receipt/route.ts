@@ -14,13 +14,21 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     supabase.from("participants").select("participant_code").eq("id", session.participant_id).single(),
     supabase.from("baseline_snapshots").select("baseline_score, frozen_at").eq("session_id", id).maybeSingle(),
     supabase.from("measurements").select("phase, score, recorded_at").eq("session_id", id),
-    supabase.from("deliveries").select("exact_text, source_map, delivered_at").eq("session_id", id).maybeSingle(),
+    supabase.from("deliveries").select("exact_text, source_map, delivered_at, approval_id").eq("session_id", id).maybeSingle(),
     supabase.from("followups").select("due_at, collected_at, score").eq("session_id", id).maybeSingle(),
     supabase.from("belief_confirmations").select("confirmed_wording").eq("session_id", id).order("revision", { ascending: false }).limit(1).maybeSingle(),
   ]);
 
   const scoresByPhase: Record<string, number> = {};
   for (const m of measurements ?? []) scoresByPhase[m.phase] = m.score;
+
+  // Item 8: describe automation honestly — whichever path actually
+  // produced this delivery, not a blanket claim either way.
+  let reviewType: "automatic" | "researcher" | null = null;
+  if (delivery?.approval_id) {
+    const { data: approval } = await supabase.from("approvals").select("is_system").eq("id", delivery.approval_id).maybeSingle();
+    reviewType = approval?.is_system ? "automatic" : "researcher";
+  }
 
   return NextResponse.json({
     participantCode: participant?.participant_code ?? null,
@@ -31,6 +39,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     sourcesShown: delivery?.source_map ?? null,
     deliveredText: delivery?.exact_text ?? null,
     deliveredAt: delivery?.delivered_at ?? null,
+    reviewType,
     followup: followup ? { dueAt: followup.due_at, collected: Boolean(followup.collected_at), score: followup.score } : null,
     generatedAt: new Date().toISOString(),
   });
