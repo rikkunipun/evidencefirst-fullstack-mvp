@@ -1,8 +1,114 @@
 # EvidenceFirst repair handoff — 2026-10-09
 
-Status at last update: Tier 1 (items 1–6) complete and verified. Tier 2/3
-not started — see `docs/deferred.md`. This document is updated in place
-as work continues; the final version is the authoritative handoff.
+Status at last update: Tier 1 (items 1–6) complete, verified, and
+**deployed to production** at commit `7ac9114` (deploy commit
+`55c50f7`). Tier 2 (items 7–11) complete and verified locally — all five
+have real, tested, committed work — but **not yet deployed**; deploy
+requires a separate explicit "deploy" per the task's gate. Tier 3 not
+started — see `docs/deferred.md`. This document is updated in place as
+work continues; the final version is the authoritative handoff.
+
+## Tier 1 production deployment
+
+Deployed from a clean `git worktree` pinned to commit `7ac9114` (not the
+working tree, which already had Tier 2 changes in progress by the time
+of deploy) via `vercel deploy --prod --yes`, aliased to
+`https://evidencefirst-fullstack-mvp.vercel.app`. Pre-deploy: confirmed
+migration 0014 is additive-only and that the then-currently-deployed
+commit (`13fc858`) is backward compatible with the migrated DB (no
+`select("*")` on `sessions`/`extraction_snapshots` in that commit's
+queries). Reinstalled deps and reran tsc/lint/71 unit tests/build inside
+the pinned worktree — all green.
+
+Post-deploy verification — three fresh sessions through the real public
+API, real model, real (migrated) DB:
+
+| Case | Outcome | Turn latency (ms) |
+|---|---|---|
+| Mixed study story | Follow-up question, then confirmation with a faithful read-back — no misclassification, no blank park | 16196, 13216 |
+| Gym/bus story | Same pattern, correct read-back | 15735, 12202 |
+| Diagram preference | Parked immediately with the specific "preference/practical/social" reason — correctly still parks | 13292 |
+
+All three confirmed directly against the `sessions` table (state/
+park_reason as expected) and marked `is_test=true`,
+`test_run_id=tier1-prod-verify-2026-10-09` (audited, not deleted).
+Average turn latency ~14.1s end-to-end over the public internet —
+higher than the isolated ~10s model-only benchmark, consistent with real
+network/region overhead on top of the model's own inference time.
+
+## Tier 2 — what shipped (implemented and verified locally, not deployed)
+
+**Item 7 — decision/claim split.** `belief_confirmations` gains
+generated/confirmed decision-narrative and empirical-claim columns
+(migration 0015, additive). `ConfirmationView` now shows two separately
+editable fields instead of one free-text blob; the server composes the
+combined sentence (`combineBeliefWording`) so every existing downstream
+reader is unaffected — verified byte-identical via a regression test. An
+in-flight session from before this shipped (null split columns) falls
+back to best-effort splitting the old combined sentence rather than
+losing it. Separately confirmed by code audit (no fix needed): every
+score input/display already treats zero as a valid value (`=== null` /
+`??`, never a truthy check) across baseline, crux, pre/post measurement,
+`ScorePicker`, `ReceiptView`, and export.
+
+**Item 8 — researcher review split.** The approval form asked one
+question that defaulted to "Supported" and routed "needs clarification"
+into a terminal refusal. Now two required selects with no default
+(`briefAccurate`; `evidenceRelation` ∈
+supports/qualifies/contradicts/unresolved/outside_scope) — migration
+0016 adds `approvals.brief_accurate`/`evidence_relation` (append-only
+table unchanged). `outside_scope` terminally refuses (nothing a revision
+fixes); an inaccurate brief or `unresolved` evidence relation returns the
+session to `assigned` instead of refusing it (new legal transition,
+regression-tested to confirm it's *only* legal from `pending_review`) —
+"Generate draft" reappears for a fresh attempt. `supports`/`qualifies`/
+`contradicts` with an accurate brief all deliver identical content; only
+the recorded relationship differs, so a contradicted belief is never
+mislabeled as supported.
+
+**Item 9 — free-text topic proposal.** A story with no situation card
+left `pack_topic` permanently null, failing the checkable gate regardless
+of content. `lib/topic-proposal.ts` is a plain keyword heuristic over the
+three real catalog topics — not a model call, deliberately rough, never
+guesses without a match. The messages route asks one neutral yes/no
+question ("Does your story sound like it's mainly about ___ — yes or
+no?") only when `pack_topic` is still null at the point discovery would
+otherwise move to confirmation; `pack_topic` is set only on an explicit
+yes plus a defense-in-depth `getEnabledPackForTopic` catalog check —
+never force-matched. Verified live end-to-end
+(`scripts/topic-proposal-check.ts`): a genuine free-text-only gym story
+gets asked, answers yes, `pack_topic` becomes `'activity'` before
+confirmation.
+
+**Item 10 — follow-up link reissue.** The raw follow-up token is only
+ever stored hashed (never recoverable), so a refresh before saving the
+link previously said "contact the researcher." New
+`POST /api/sessions/[id]/followup-link` generates a fresh token and
+overwrites `token_hash` (unique per session, single-row update);
+`due_at` is untouched. The DB's pre-existing
+`followups_block_update_if_collected` trigger makes reissue impossible
+after the follow-up is actually collected, even under a race — the route
+catches that and reports `alreadyCollected`. `ReceiptView` now offers
+"Get my follow-up link again" instead of a dead end.
+
+**Item 11 — withdrawal atomicity (partial).** Migration 0017 adds a
+BEFORE INSERT trigger on both `deliveries` and `measurements` that checks
+`sessions.withdrawn_at` inside the same statement as the write —
+verified directly against Postgres to reject an insert for a withdrawn
+session before any other constraint even runs. This closes the race
+where a withdrawal lands between a route's session read and its write,
+for the two highest-stakes, participant-visible tables. Double-
+measurement was already structurally prevented
+(`unique(session_id, phase)` + block-update trigger, pre-existing) — this
+only adds the withdrawal check. **Not done**: a full transactional
+rewrite of the entire approve-and-deliver sequence as one atomic unit, and
+`approvals` writes themselves are not withdrawal-gated (low-harm — never
+shown to the participant). See `docs/deferred.md`.
+
+All Tier 2 work: tsc, lint, 82/82 unit tests, and production build pass
+after each item; migrations 0015–0017 applied (additive, tracked,
+transactional via `scripts/apply-migrations.mjs`). **Not deployed** —
+awaiting explicit instruction.
 
 ## Confirmed failure cause (not assumed — reproduced live)
 
@@ -103,6 +209,16 @@ rejected exactly as before.
 false/NULL. Applied via `npm run db:migrate` (tracked, transactional,
 idempotent — see `scripts/apply-migrations.mjs`).
 
+Tier 2 migrations (all additive, applied):
+- `0015_belief_confirmation_split.sql`: `belief_confirmations` gains
+  generated/confirmed decision-narrative and empirical-claim columns.
+- `0016_approval_disposition_split.sql`: `approvals` gains
+  `brief_accurate`/`evidence_relation` (own check constraint); the legacy
+  `disposition` check constraint is widened to also allow `contradicts`
+  and `outside_scope` — every existing row's value stays valid.
+- `0017_withdrawal_consent_guards.sql`: `ef_block_if_session_withdrawn()`
+  BEFORE INSERT trigger on `deliveries` and `measurements`.
+
 ## Prompt/schema versioning
 
 - `PROMPT_VERSION` for the discovery interviewer: `v1` → `v2`. `v1` file
@@ -111,6 +227,13 @@ idempotent — see `scripts/apply-migrations.mjs`).
   new prompt.
 - `candidateDriverSchema`: additive enum value (`mixed_uncertain`). Old
   stored values are all still valid members of the enum.
+- `confirmBeliefSchema` (new, Tier 2 item 7) replaces the confirm route's
+  inline single-field schema; `adminApproveSchema` (Tier 2 item 8) now
+  requires `briefAccurate`/`evidenceRelation` instead of one
+  `disposition` enum. Both are breaking changes to the *request* shape
+  for their routes, but since this app has no real delivered sessions in
+  production yet (per the reviewer's own retest), there's no in-flight
+  client depending on the old request shape.
 
 ## Test matrix
 
@@ -166,17 +289,21 @@ audited, no deletion).
 
 ## Remaining blockers / open risks
 
-- Tier 2 (items 7–11) not started: empirical-claim/decision separation,
-  researcher supports/qualifies/contradicts/unresolved/outside-scope
-  review, free-text topic proposal, follow-up link recovery, transactional
-  consent/approval/delivery/measurement writes.
+- Tier 2 (items 7–11) is implemented and verified locally but **not
+  deployed** — see "Tier 2 — what shipped" above and `docs/deferred.md`
+  for each item's specific remaining scope (e.g. item 11's withdrawal fix
+  covers `deliveries`/`measurements` only, not a full transactional
+  rewrite of the whole approve-and-deliver sequence).
 - Admin session detail page doesn't yet surface `validation_diagnostics`
-  (only the list page shows recovery/review badges) — researcher can
-  still query it directly in Supabase.
+  or the new `brief_accurate`/`evidence_relation` columns (only the list
+  page shows recovery/review badges) — researcher can still query both
+  directly in Supabase.
 - The repair→recovery two-step and all input-path combinations for cases
   (d)/(e) weren't independently reproduced live end-to-end (see matrix
   note above).
-- No deploy has happened. Nothing here is live for pilots yet.
+- Tier 1 is deployed and verified on production (3 fresh sessions).
+  Tier 2 is not deployed — nothing from items 7–11 is live for pilots
+  yet.
 
 ## Pilot checklist (3 consenting adults, own recent decisions)
 
