@@ -9,6 +9,10 @@ export interface AdminSessionRow {
   state: string;
   topic: string | null;
   parkReason: string | null;
+  /** Distinct from parkReason — a bounded repair also failed; state is
+   * still 'discovery', never conflated with a substantive park here. */
+  discoveryRecoveryReason: string | null;
+  needsResearcherReview: boolean;
   isTest: boolean;
   createdAt: string;
   lastParticipantActivityAt: string | null;
@@ -32,7 +36,7 @@ export async function getAdminSessionList(params: SessionListParams): Promise<Ad
 
   let query = supabase
     .from("sessions")
-    .select("id, state, pack_topic, park_reason, is_test, created_at, pilot_label")
+    .select("id, state, pack_topic, park_reason, discovery_recovery_reason, needs_researcher_review, is_test, created_at, pilot_label")
     .order("created_at", { ascending: false })
     .limit(200);
 
@@ -66,6 +70,8 @@ export async function getAdminSessionList(params: SessionListParams): Promise<Ad
     state: s.state,
     topic: s.pack_topic,
     parkReason: s.park_reason,
+    discoveryRecoveryReason: s.discovery_recovery_reason,
+    needsResearcherReview: s.needs_researcher_review,
     isTest: s.is_test,
     createdAt: s.created_at,
     lastParticipantActivityAt: lastActivityBySession.get(s.id) ?? null,

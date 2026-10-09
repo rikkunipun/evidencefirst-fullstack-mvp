@@ -92,9 +92,13 @@ export default async function AdminSessionsListPage({
                       "—"
                     )}
                   </td>
-                  <td className="px-4 py-2">{STATE_LABELS[r.state] ?? r.state}</td>
+                  <td className="px-4 py-2">
+                    {STATE_LABELS[r.state] ?? r.state}
+                    {r.discoveryRecoveryReason && <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-800">recovery (not parked)</span>}
+                    {r.needsResearcherReview && <span className="ml-2 rounded bg-red-100 px-1.5 py-0.5 text-xs text-red-800">review requested</span>}
+                  </td>
                   <td className="px-4 py-2">{r.topic ?? "—"}</td>
-                  <td className="px-4 py-2 max-w-xs">{r.parkReason ?? "—"}</td>
+                  <td className="px-4 py-2 max-w-xs">{r.discoveryRecoveryReason ? <span className="text-amber-800">{r.discoveryRecoveryReason}</span> : r.parkReason ?? "—"}</td>
                   <td className="px-4 py-2 whitespace-nowrap">{formatIST(r.createdAt)}</td>
                   <td className="px-4 py-2 whitespace-nowrap">{formatIST(r.lastParticipantActivityAt)}</td>
                   <td className="px-4 py-2 whitespace-nowrap">{formatIST(r.followupDueAt)}</td>
