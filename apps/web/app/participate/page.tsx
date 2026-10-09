@@ -1,16 +1,30 @@
 "use client";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Card, PageShell } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Field, inputClassName } from "@/components/ui/Field";
-import { SITUATION_CARDS } from "@/lib/zod/requests";
+import { SITUATION_CARDS, PILOT_LABEL_PATTERN } from "@/lib/zod/requests";
 import { SITUATION_CARD_LABELS, DECISION_CUES } from "@/lib/decision-cues";
 
 type Step = "consent" | "situation" | "goal" | "cue";
 
+// useSearchParams() requires a Suspense boundary (it's what lets this page
+// read ?pilot= without forcing the whole app into client-side-only
+// rendering). The page is already fully client-interactive either way.
 export default function ParticipatePage() {
+  return (
+    <Suspense fallback={null}>
+      <ParticipateForm />
+    </Suspense>
+  );
+}
+
+function ParticipateForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const pilotParam = searchParams.get("pilot");
+  const pilotLabel = pilotParam && PILOT_LABEL_PATTERN.test(pilotParam) ? pilotParam : null;
   const [step, setStep] = useState<Step>("consent");
   const [consented, setConsented] = useState(false);
   const [situationCard, setSituationCard] = useState<string | null>(null);
@@ -39,6 +53,7 @@ export default function ParticipatePage() {
           // own story underneath it. Neither overwrites the other.
           decisionCueId: decisionCueId,
           freeText: freeText.trim() || null,
+          pilotLabel,
         }),
       });
       if (!res.ok) throw new Error("request_failed");

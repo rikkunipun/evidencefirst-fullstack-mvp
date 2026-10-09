@@ -14,6 +14,9 @@ export const SITUATION_CARDS = [
   "skip",
 ] as const;
 
+/** Letters, digits, dash only, max 20 chars — e.g. ?pilot=sai-teja. No personal data. */
+export const PILOT_LABEL_PATTERN = /^[A-Za-z0-9-]{1,20}$/;
+
 export const createSessionSchema = z.object({
   consentVersion: z.literal("v1"),
   situationCard: z.enum(SITUATION_CARDS),
@@ -21,6 +24,7 @@ export const createSessionSchema = z.object({
   decisionCueId: z.string().trim().max(60).optional().nullable(),
   cardOrder: z.array(z.string()).max(12).optional(),
   freeText: z.string().trim().max(2000).optional().nullable(),
+  pilotLabel: z.string().regex(PILOT_LABEL_PATTERN).optional().nullable(),
 });
 
 export const withdrawSchema = z.object({

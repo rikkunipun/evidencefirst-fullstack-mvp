@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
 
   const { data: session, error: sessionError } = await supabase
     .from("sessions")
-    .insert({ participant_id: participantId, state: "consented", pack_topic: topicKey })
+    .insert({ participant_id: participantId, state: "consented", pack_topic: topicKey, pilot_label: body.pilotLabel ?? null })
     .select("id")
     .single();
   if (sessionError || !session) {
