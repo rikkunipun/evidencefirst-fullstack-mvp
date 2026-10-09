@@ -5,7 +5,7 @@ import { postMessageSchema } from "@/lib/zod/requests";
 import { transitionSession } from "@/lib/session-transition";
 import { mergeFields, firstMissingField, type FieldMap } from "@/lib/extraction-merge";
 import { runDiscoveryTurn, type DiscoveryMessageForModel } from "@/lib/ai/discovery";
-import { MIXED_DRIVER_QUESTION, MIXED_DRIVER_FOLLOWUP, RECOVERY_MESSAGE, hasCoreFields, isValidationFailure } from "@/lib/ai/discovery-pure";
+import { MIXED_DRIVER_QUESTION, MIXED_DRIVER_FOLLOWUP, RECOVERY_MESSAGE, hasCoreFields, isValidationFailure, mixedDriverNextQuestion } from "@/lib/ai/discovery-pure";
 import { generateBeliefWording } from "@/lib/belief-wording";
 import { DISCOVERY_QUESTION_BUDGET } from "@/lib/constants";
 import { recordAuditEvent } from "@/lib/audit";
@@ -161,15 +161,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   // of letting it stop/park — enforced server-side so it can't be skipped
   // by a paraphrase, and asked at most once (then its one allowed
   // follow-up), never re-asked once answered.
-  const alreadyAskedMixedPrimary = recentMessages.some((m) => m.role === "assistant" && m.content === MIXED_DRIVER_QUESTION);
-  const alreadyAskedMixedFollowup = recentMessages.some((m) => m.role === "assistant" && m.content === MIXED_DRIVER_FOLLOWUP);
-  if (turn.candidate_driver === "mixed_uncertain" && !alreadyAskedMixedFollowup) {
-    turn = {
-      ...turn,
-      should_stop: false,
-      stop_reason: null,
-      next_question: alreadyAskedMixedPrimary ? MIXED_DRIVER_FOLLOWUP : MIXED_DRIVER_QUESTION,
-    };
+  const mixedQuestion = mixedDriverNextQuestion(
+    turn.candidate_driver,
+    recentMessages.some((m) => m.role === "assistant" && m.content === MIXED_DRIVER_QUESTION),
+    recentMessages.some((m) => m.role === "assistant" && m.content === MIXED_DRIVER_FOLLOWUP),
+  );
+  if (mixedQuestion) {
+    turn = { ...turn, should_stop: false, stop_reason: null, next_question: mixedQuestion };
   }
 
   console.log("[discovery-turn-latency]", {

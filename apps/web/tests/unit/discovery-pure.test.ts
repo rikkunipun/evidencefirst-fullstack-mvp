@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { enforceProvenance, neutralFallbackTurn, hasCoreFields, isValidationFailure } from "../../lib/ai/discovery-pure";
+import {
+  enforceProvenance,
+  neutralFallbackTurn,
+  hasCoreFields,
+  isValidationFailure,
+  mixedDriverNextQuestion,
+  MIXED_DRIVER_QUESTION,
+  MIXED_DRIVER_FOLLOWUP,
+} from "../../lib/ai/discovery-pure";
 import type { DiscoveryTurn } from "../../lib/zod/discovery";
 
 const EMPTY_EXTRACTION = {
@@ -164,6 +172,26 @@ describe("required regression: candidate_ready + provenance-nulled core field ne
     });
     const { turn: safeTurn } = enforceProvenance(turn, new Set([id]));
     expect(isValidationFailure(safeTurn, hasCoreFields(safeTurn.extraction))).toBe(false);
+  });
+});
+
+describe("mixedDriverNextQuestion (Tier 1 item 2)", () => {
+  it("asks the exact primary question when the driver is mixed/uncertain and nothing has been asked yet", () => {
+    expect(mixedDriverNextQuestion("mixed_uncertain", false, false)).toBe(MIXED_DRIVER_QUESTION);
+  });
+
+  it("asks the exact follow-up once the primary question has already been asked", () => {
+    expect(mixedDriverNextQuestion("mixed_uncertain", true, false)).toBe(MIXED_DRIVER_FOLLOWUP);
+  });
+
+  it("never re-asks once the follow-up has already been asked (resolved by the participant's next answer)", () => {
+    expect(mixedDriverNextQuestion("mixed_uncertain", true, true)).toBeNull();
+  });
+
+  it("does not trigger for any other driver, including plain preference", () => {
+    expect(mixedDriverNextQuestion("preference_value", false, false)).toBeNull();
+    expect(mixedDriverNextQuestion("outcome_belief", false, false)).toBeNull();
+    expect(mixedDriverNextQuestion("unclear", false, false)).toBeNull();
   });
 });
 

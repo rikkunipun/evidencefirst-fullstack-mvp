@@ -118,6 +118,18 @@ export const MIXED_DRIVER_FOLLOWUP = "If you expected both options to give the s
  * substantive park reason, shown only after one bounded repair also fails. */
 export const RECOVERY_MESSAGE = "We couldn't reliably record your expectation from that answer. Your answer is saved. You can try again or ask for researcher review.";
 
+/**
+ * Tier 1 item 2, server-enforced: when the model flags a mixed/uncertain
+ * driver, return the exact fixed question to ask next (primary, then its
+ * one follow-up) — never a paraphrase, never re-asked once both are
+ * answered. Returns null once the follow-up has already been asked (the
+ * participant's answer resolves it; the next turn evaluates fresh).
+ */
+export function mixedDriverNextQuestion(candidateDriver: string, alreadyAskedPrimary: boolean, alreadyAskedFollowup: boolean): string | null {
+  if (candidateDriver !== "mixed_uncertain" || alreadyAskedFollowup) return null;
+  return alreadyAskedPrimary ? MIXED_DRIVER_FOLLOWUP : MIXED_DRIVER_QUESTION;
+}
+
 /** The three fields a read-back template needs. Shared source of truth
  * between the route and its tests, so "what counts as core" never drifts
  * between the two. */
