@@ -1,22 +1,41 @@
-# Deferred — not touched in the Oct 9 pre-pilot repair pass
+# Deferred work (2026-10-09 final-build repair)
 
-Per explicit instruction: only the P0 list from `EvidenceFirst_Fullstack_Live_Audit_Oct9.md` was worked today, in order, with a commit after each item. These items from the audit are real and worth doing, but are intentionally deferred:
+Explicitly out of scope for today's deadline per the task's own tiering.
+Nothing here was started. Listed so it isn't silently dropped.
 
-- **Semantic review taxonomy** (audit §3): replace the researcher's supports/qualifies/unsupported/needs-clarification default-to-Supported dropdown with a required supports / qualifies / contradicts / unresolved / outside-scope choice, no default, plus a controlled clarification step instead of terminal refusal. This is a real researcher-workflow redesign, not a bug fix — out of scope for a pre-pilot patch.
-- **Multi-session resume** (audit §5): the single `ef_session` cookie holds one session; starting a new session overwrites it and the earlier session's URL falls back to consent. Needs either multiple capability cookies or a session-switcher, which is new surface area.
-- **Expanded receipts** (audit §8): claim/scope versions, gate/rule versions, crux details, approval disposition, immutable evidence versions, and full provenance in the JSON receipt. The current receipt is accurate but a summary, not the complete trace the audit wants.
-- **Staging database**: all work today ran against the same Supabase project used for the live pilots (there is no separate staging project in this capstone's resources). A real staging environment is infrastructure, not a code change.
-- **Full race-condition suite** (audit §6): approval/delivery and post-score/follow-up are sequential writes with a state check afterward, not wrapped in a single transaction; a withdrawal or concurrent retry during that window could leave a partial write. Needs transactions/row locks and a dedicated concurrency test harness — explicitly called out in the audit as needing staging, not production, to exercise safely.
-- **Entailment-grade provenance** (audit §7): current provenance checks that a cited message ID exists in this turn's input, not that the extracted fact is actually entailed by an exact quote span from that message. Tightening this changes the AI contract shape (adding quote spans) and is a larger change than today's window allows.
-- **Classifier-failure routing** (audit §7): on a crux classification failure, the route currently parks rather than returning to researcher review as its own fallback rationale implies. Noted, not fixed today.
-- **Service-failure vs. substantive-parking distinction** (audit §7): a transient provider error and a genuine "this isn't checkable" parking currently produce similar-looking park outcomes to the participant. Needs a distinct UI/receipt treatment.
-- **Explicit token/spend limits** (audit §7): output-token caps, persistent rate limits, and real token/spend logging beyond the per-turn latency logging added today. The question-budget cap is not a spending cap.
-- **Review-state persistence across refresh** (audit §4): the researcher's source map / review-in-progress state currently disappears on refresh.
+## Tier 3 (deferred by the task's own instruction)
+- Multi-session resume (a participant returning to an old session after
+  losing their cookie/link has no recovery path beyond the one follow-up
+  link flow).
+- Persistent (cross-request/cross-instance) spend limits — current rate
+  limiting (`lib/rate-limit.ts`) is in-memory/per-instance, documented as
+  such, not distributed-grade.
+- Full race-test matrix (concurrent withdrawal vs. approval vs. delivery
+  vs. measurement writes) — Tier 2 item 11 below covers the single most
+  important case only (if even reached).
+- Full mobile layout/viewport test matrix.
+- Real-model smoke tests beyond the small, clearly-labelled samples in
+  `scripts/real-model-smoke-test.ts` and `scripts/latency-benchmark.ts`.
 
-## What today's P0 pass explicitly did NOT do (per the owner's rules)
+## Tier 2 items not reached today (see handoff doc for exact status)
+Tier 1 (items 1–6) was completed first, per instruction. Tier 2 items 7–11
+— empirical-claim/decision separation, researcher supports/qualifies/
+contradicts/unresolved/outside-scope review, free-text topic proposal +
+confirmation, follow-up link recovery after refresh, and transactional
+consent/approval/delivery/measurement writes — were not started today;
+see the handoff document for exact status at the 6pm stop.
 
-- No production records deleted — all audit fixtures were marked `is_test=true` and kept.
-- No password rotations beyond what was already in progress before this session.
-- No secrets printed.
-- No new evidence packs added.
-- No visual/UX redesign — only the specific fixes listed as P0.
+## Noted but not built today (lower-risk gaps surfaced during Tier 1 work)
+- Validation diagnostics (`extraction_snapshots.validation_diagnostics`)
+  are persisted and researcher-queryable directly in Supabase, but not
+  yet surfaced in the admin session detail UI — only the list page shows
+  the recovery/review-requested badges.
+- Vercel function region vs. Supabase region (`ap-south-1`) was
+  investigated, not changed — Next's per-route `preferredRegion` is
+  deprecated and Vercel-side region pinning for Node serverless functions
+  is a project/dashboard setting, not a code change. The latency
+  benchmark suggests region is at most a minor contributor (the model's
+  own inference time alone accounts for ~10s), so this wasn't prioritized
+  under deadline pressure.
+- A faster compatible model was not benchmarked in isolation (time did
+  not allow); the production model was not changed.
