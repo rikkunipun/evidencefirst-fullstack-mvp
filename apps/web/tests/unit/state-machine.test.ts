@@ -45,6 +45,18 @@ describe("state machine", () => {
     expect(canTransition("refused", "assigned")).toBe(false);
   });
 
+  it("allows automatic delivery to skip straight from assigned/pending_review/approved to delivered or parked (removing the mandatory human-review dependency)", () => {
+    expect(canTransition("assigned", "delivered")).toBe(true);
+    expect(canTransition("assigned", "parked")).toBe(true);
+    expect(canTransition("pending_review", "delivered")).toBe(true);
+    expect(canTransition("pending_review", "parked")).toBe(true);
+    expect(canTransition("approved", "delivered")).toBe(true); // pre-existing, unchanged
+    expect(canTransition("approved", "parked")).toBe(true);
+    // Still not reachable from unrelated states.
+    expect(canTransition("crux", "delivered")).toBe(false);
+    expect(canTransition("refused", "delivered")).toBe(false);
+  });
+
   it("rejects skipping ahead", () => {
     expect(canTransition("consented", "delivered")).toBe(false);
     expect(canTransition("discovery", "baseline_frozen")).toBe(false);

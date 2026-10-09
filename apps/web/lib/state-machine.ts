@@ -45,14 +45,20 @@ const TRANSITIONS: Record<SessionState, SessionState[]> = {
   baseline_frozen: ["crux"],
   crux: ["pre_evidence_recorded", "parked"],
   pre_evidence_recorded: ["assigned"],
-  assigned: ["pending_review"],
+  // "delivered" and "parked" (automatic delivery, new-task item 3/4):
+  // auto mode classifies the frozen claim and either delivers directly
+  // from 'assigned' (no researcher step) or parks with the explicit
+  // no-suitable-evidence reason. "parked" is also reachable from
+  // 'pending_review'/'approved' below for resuming an old
+  // manual-mode-era waiting session under auto mode (item 9).
+  assigned: ["pending_review", "delivered", "parked"],
   // "assigned" too (Tier 2 item 8): a researcher who finds the brief
   // inaccurate, or the evidence relationship genuinely unresolved, gets an
   // actionable return path to regenerate the draft — not an accidental
   // terminal refusal for something that just needs revision.
-  pending_review: ["approved", "refused", "assigned"],
+  pending_review: ["approved", "refused", "assigned", "delivered", "parked"],
   refused: [],
-  approved: ["delivered"],
+  approved: ["delivered", "parked"],
   delivered: ["ack_recorded"],
   ack_recorded: ["measured"],
   measured: ["followup_due"],

@@ -15,3 +15,9 @@ export function validateClassification(raw: string, policy: PackPolicy): string 
   const match = policy.allowedKinds.find((k) => k.id === trimmed);
   return match ? match.id : "unclear";
 }
+
+/** The one bounded, neutral clarification question (item 3) — fixed and
+ * generic across every pack/case on purpose: it must never hint at which
+ * category the model is weighing, or imply the participant's claim is
+ * wrong. Asked at most once per session. */
+export const CLAIM_KIND_CLARIFICATION_QUESTION = "Can you restate the specific thing you expect, as precisely as possible?";
