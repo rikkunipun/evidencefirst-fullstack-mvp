@@ -118,6 +118,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (deliveryError.code === "23505") {
       return NextResponse.json({ error: "already_approved", details: "this session was already approved and delivered" }, { status: 409 });
     }
+    // Tier 2 item 11: deliveries_block_if_withdrawn (migration 0017) raises
+    // inside the INSERT itself if the participant withdrew between our
+    // session read above and this write — checked and enforced atomically
+    // in the same statement, not a separate app-level re-check with its
+    // own race window.
+    if (deliveryError.message.includes("was withdrawn")) {
+      return NextResponse.json({ error: "invalid_state", details: "participant withdrew before delivery could be recorded" }, { status: 409 });
+    }
     return NextResponse.json({ error: "server_error" }, { status: 500 });
   }
 

@@ -39,7 +39,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!pack) return NextResponse.json({ error: "invalid_state", details: "no enabled evidence pack for this topic" }, { status: 409 });
 
   const { error: measurementError } = await supabase.from("measurements").insert({ session_id: id, phase: "pre_evidence", score: parsed.data.score, explanation: parsed.data.explanation ?? null });
-  if (measurementError) return NextResponse.json({ error: "server_error" }, { status: 500 });
+  if (measurementError) {
+    // unique(session_id, phase): a genuine double-submit can never record twice.
+    if (measurementError.code === "23505") return NextResponse.json({ error: "already_measured", details: "pre-evidence score already recorded" }, { status: 409 });
+    // Tier 2 item 11: measurements_block_if_withdrawn (migration 0017)
+    // checks withdrawal atomically inside this same INSERT statement.
+    if (measurementError.message.includes("was withdrawn")) {
+      return NextResponse.json({ error: "invalid_state", details: "participant withdrew before this could be recorded" }, { status: 409 });
+    }
+    return NextResponse.json({ error: "server_error" }, { status: 500 });
+  }
 
   const { data: assignResult, error: assignError } = await supabase.rpc("assign_condition", {
     p_session_id: id,

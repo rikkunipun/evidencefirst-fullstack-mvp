@@ -29,7 +29,20 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const { error: measurementError } = await supabase
     .from("measurements")
     .insert({ session_id: id, phase: "post_evidence", score: parsed.data.score, explanation: parsed.data.explanation ?? null, reported_behavior: parsed.data.reportedBehavior ?? null });
-  if (measurementError) return NextResponse.json({ error: "server_error" }, { status: 500 });
+  if (measurementError) {
+    // unique(session_id, phase) means a genuine double-submit (e.g. a
+    // retried request) can never record twice — the loser hits a
+    // unique-violation, not a duplicate measurement.
+    if (measurementError.code === "23505") return NextResponse.json({ error: "already_measured", details: "post-evidence score already recorded" }, { status: 409 });
+    // Tier 2 item 11: measurements_block_if_withdrawn (migration 0017)
+    // raises inside the INSERT itself if the participant withdrew between
+    // our session read above and this write — checked atomically in the
+    // same statement.
+    if (measurementError.message.includes("was withdrawn")) {
+      return NextResponse.json({ error: "invalid_state", details: "participant withdrew before this could be recorded" }, { status: 409 });
+    }
+    return NextResponse.json({ error: "server_error" }, { status: 500 });
+  }
 
   const rawToken = generateCapabilityToken();
   const dueAt = computeFollowupDueAt(new Date(delivery.delivered_at));
