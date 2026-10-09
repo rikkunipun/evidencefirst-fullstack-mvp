@@ -19,6 +19,10 @@ interface ExportRow {
   /** Item 8/10: describe automation honestly, never a blanket claim either way. */
   deliveryModeAtCreation: string | null;
   reviewType: "automatic" | "researcher" | null;
+  reviewDescription: string | null;
+  policyVersion: string | null;
+  packVersion: string | null;
+  templateVersion: string | null;
   claimKind: string | null;
 }
 
@@ -64,9 +68,26 @@ export async function GET(req: NextRequest) {
     for (const m of measurements ?? []) scoresByPhase[m.phase] = m.score;
 
     let reviewType: "automatic" | "researcher" | null = null;
+    let reviewDescription: string | null = null;
+    let policyVersion: string | null = null;
+    let packVersion: string | null = null;
+    let templateVersion: string | null = null;
     if (delivery?.approval_id) {
-      const { data: approval } = await supabase.from("approvals").select("is_system").eq("id", delivery.approval_id).maybeSingle();
-      reviewType = approval?.is_system ? "automatic" : "researcher";
+      const { data: approval } = await supabase
+        .from("approvals")
+        .select("is_system, policy_version, pack_version, template_version")
+        .eq("id", delivery.approval_id)
+        .maybeSingle();
+      if (approval?.is_system) {
+        reviewType = "automatic";
+        reviewDescription = "system validation";
+        policyVersion = approval.policy_version;
+        packVersion = approval.pack_version;
+        templateVersion = approval.template_version;
+      } else if (approval) {
+        reviewType = "researcher";
+        reviewDescription = "researcher review";
+      }
     }
 
     rows.push({
@@ -85,6 +106,10 @@ export async function GET(req: NextRequest) {
       deliveredAt: delivery?.delivered_at ?? null,
       deliveryModeAtCreation: s.delivery_mode ?? null,
       reviewType,
+      reviewDescription,
+      policyVersion,
+      packVersion,
+      templateVersion,
       claimKind: s.claim_kind ?? null,
     });
   }
@@ -110,6 +135,10 @@ export async function GET(req: NextRequest) {
       deliveredAt: "",
       deliveryModeAtCreation: "",
       reviewType: "",
+      reviewDescription: "",
+      policyVersion: "",
+      packVersion: "",
+      templateVersion: "",
       claimKind: "",
     },
   );

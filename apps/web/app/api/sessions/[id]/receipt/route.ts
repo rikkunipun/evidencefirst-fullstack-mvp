@@ -22,12 +22,30 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const scoresByPhase: Record<string, number> = {};
   for (const m of measurements ?? []) scoresByPhase[m.phase] = m.score;
 
-  // Item 8: describe automation honestly — whichever path actually
-  // produced this delivery, not a blanket claim either way.
+  // Item 8/6: describe automation honestly — whichever path actually
+  // produced this delivery, never a blanket claim either way, and never
+  // naming a human reviewer for an automatic decision.
   let reviewType: "automatic" | "researcher" | null = null;
+  let reviewDescription: string | null = null;
+  let policyVersion: string | null = null;
+  let packVersion: string | null = null;
+  let templateVersion: string | null = null;
   if (delivery?.approval_id) {
-    const { data: approval } = await supabase.from("approvals").select("is_system").eq("id", delivery.approval_id).maybeSingle();
-    reviewType = approval?.is_system ? "automatic" : "researcher";
+    const { data: approval } = await supabase
+      .from("approvals")
+      .select("is_system, policy_version, pack_version, template_version")
+      .eq("id", delivery.approval_id)
+      .maybeSingle();
+    if (approval?.is_system) {
+      reviewType = "automatic";
+      reviewDescription = "system validation";
+      policyVersion = approval.policy_version;
+      packVersion = approval.pack_version;
+      templateVersion = approval.template_version;
+    } else if (approval) {
+      reviewType = "researcher";
+      reviewDescription = "researcher review";
+    }
   }
 
   return NextResponse.json({
@@ -40,6 +58,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     deliveredText: delivery?.exact_text ?? null,
     deliveredAt: delivery?.delivered_at ?? null,
     reviewType,
+    reviewDescription,
+    policyVersion,
+    packVersion,
+    templateVersion,
     followup: followup ? { dueAt: followup.due_at, collected: Boolean(followup.collected_at), score: followup.score } : null,
     generatedAt: new Date().toISOString(),
   });
