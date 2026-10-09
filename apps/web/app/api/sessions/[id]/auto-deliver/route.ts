@@ -8,6 +8,7 @@ import { getPackPolicy } from "@/lib/pack-policy";
 import { PACK_POLICY_VERSION } from "@/lib/pack-policy";
 import { classifyClaim, validateClassification } from "@/lib/ai/claim-classifier";
 import { CLAIM_KIND_CLARIFICATION_QUESTION } from "@/lib/ai/claim-classifier-pure";
+import { decideAutoDeliveryOutcome } from "@/lib/auto-delivery-decision";
 import { composeDelivery, DELIVERY_TEMPLATE_VERSION } from "@/lib/delivery-template";
 import { computeContentHash } from "@/lib/content-hash";
 import { legacyDisposition } from "@/lib/approval-disposition";
@@ -114,11 +115,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     kind = validated === "unclear" ? "none" : validated;
   }
 
-  const kindPolicy = policy?.allowedKinds.find((k) => k.id === kind) ?? null;
-  // "unresolved" kinds are defensively treated as non-delivery too — the
-  // current policy table has none, but a future edit must not silently
-  // start delivering an unresolved relation without this still gating it.
-  if (kind === "none" || !kindPolicy || kindPolicy.evidenceRelation === "unresolved") {
+  const decision = decideAutoDeliveryOutcome(kind, policy);
+  if (decision.outcome === "park") {
     const fromState = session.state as "assigned" | "pending_review" | "approved";
     const t = await transitionSession(supabase, id, fromState, session.revision, ["parked"], { park_reason: NO_SUITABLE_EVIDENCE_REASON });
     if (!t.ok) return NextResponse.json({ error: "server_error", reason: t.reason }, { status: 500 });
@@ -176,8 +174,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     p_expected_revision: session.revision,
     p_draft_revision_id: draft.id,
     p_claim_kind: kind,
-    p_legacy_disposition: legacyDisposition(true, kindPolicy.evidenceRelation),
-    p_evidence_relation: kindPolicy.evidenceRelation,
+    p_legacy_disposition: legacyDisposition(true, decision.evidenceRelation),
+    p_evidence_relation: decision.evidenceRelation,
     p_policy_version: PACK_POLICY_VERSION,
     p_pack_version: pack.version,
     p_template_version: DELIVERY_TEMPLATE_VERSION,
@@ -196,7 +194,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "server_error", details: rpcError?.message }, { status: 500 });
   }
 
-  await recordAuditEvent({ actorType: "system", action: "auto_delivered", entityType: "sessions", entityId: id, after: { kind, evidenceRelation: kindPolicy.evidenceRelation, packVersion: pack.version } });
+  await recordAuditEvent({ actorType: "system", action: "auto_delivered", entityType: "sessions", entityId: id, after: { kind, evidenceRelation: decision.evidenceRelation, packVersion: pack.version } });
 
   return NextResponse.json({ outcome: "delivered" });
 }
