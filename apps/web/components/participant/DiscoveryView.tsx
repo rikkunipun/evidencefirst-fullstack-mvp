@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { inputClassName } from "@/components/ui/Field";
-import { apiPost } from "@/lib/api-client";
+import { apiPost, ApiTimeoutError } from "@/lib/api-client";
 import type { ParticipantSessionSnapshot } from "@/lib/types/session";
 
 export function DiscoveryView({ sessionId, snapshot, onAdvance }: { sessionId: string; snapshot: ParticipantSessionSnapshot; onAdvance: () => Promise<void> }) {
@@ -20,11 +20,19 @@ export function DiscoveryView({ sessionId, snapshot, onAdvance }: { sessionId: s
     setSubmitting(true);
     setError(null);
     try {
+      // The typed answer (`answer`) is intentionally left in the textarea
+      // until a response actually succeeds — a failed or timed-out request
+      // never loses what the participant wrote, so retrying just means
+      // pressing the button again with the same text still in place.
       await apiPost(`/api/sessions/${sessionId}/messages`, { content: snapshot.messages.length === 0 ? null : answer.trim(), inputMode: "text" });
       setAnswer("");
       await onAdvance();
-    } catch {
-      setError("Something went wrong sending your answer. Please try again.");
+    } catch (err) {
+      setError(
+        err instanceof ApiTimeoutError
+          ? "That's taking longer than expected. Your answer wasn't lost — press Retry to try again."
+          : "Something went wrong sending your answer. Your answer wasn't lost — press Retry to try again.",
+      );
     } finally {
       setSubmitting(false);
     }
@@ -65,15 +73,34 @@ export function DiscoveryView({ sessionId, snapshot, onAdvance }: { sessionId: s
             className={inputClassName}
             placeholder="Type your answer…"
             autoFocus
+            disabled={submitting}
           />
+          {submitting && (
+            <p className="text-sm text-[var(--ef-muted)] flex items-center gap-2" role="status" aria-live="polite">
+              <span className="inline-block h-3 w-3 rounded-full border-2 border-[var(--ef-accent)] border-t-transparent animate-spin" aria-hidden="true" />
+              Thinking — this can take up to 30 seconds…
+            </p>
+          )}
           {error && (
             <p role="alert" className="text-sm text-red-700">
               {error}
             </p>
           )}
           <Button onClick={submit} disabled={submitting || !answer.trim()}>
-            {submitting ? "Sending…" : "Send"}
+            {submitting ? "Sending…" : error ? "Retry" : "Send"}
           </Button>
+        </>
+      ) : submitting ? (
+        <p className="text-sm text-[var(--ef-muted)] flex items-center gap-2" role="status" aria-live="polite">
+          <span className="inline-block h-3 w-3 rounded-full border-2 border-[var(--ef-accent)] border-t-transparent animate-spin" aria-hidden="true" />
+          Getting started…
+        </p>
+      ) : error ? (
+        <>
+          <p role="alert" className="text-sm text-red-700">
+            {error}
+          </p>
+          <Button onClick={submit}>Retry</Button>
         </>
       ) : (
         <p className="text-sm text-[var(--ef-muted)]">Getting started…</p>

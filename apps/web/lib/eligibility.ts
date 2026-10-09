@@ -89,7 +89,7 @@ export function evaluateEligibility(input: EligibilityInput): EligibilityResult 
   const checkable = boolGate(
     input.checkableViaPackOrTest,
     "Credible evidence or a feasible personal test can address this claim.",
-    "No credible evidence or feasible personal test can address this exact claim.",
+    "We only have verified evidence for study methods, learning styles, and exercise so far, so we can't check this particular claim yet.",
     "We don't yet know whether this claim is checkable.",
   );
 

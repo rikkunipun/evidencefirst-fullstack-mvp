@@ -51,7 +51,7 @@ test.describe("deterministic parking (no live model dependency)", () => {
       expect(state.session.state).toBe("parked");
       expect(state.session.parkReason).toBeTruthy();
       expect(state.baseline).toBeNull();
-      expect(state.assignment).toBeNull();
+      expect(state.assignment).toBeUndefined(); // participant DTO omits it entirely, not just null
       expect(state.delivery).toBeNull();
     } finally {
       await cleanup(supabase, sessionId, participantId);
@@ -81,7 +81,7 @@ test.describe("deterministic parking (no live model dependency)", () => {
       const stateRes = await request.get(`/api/sessions/${sessionId}`, { headers: cookie });
       const state = await stateRes.json();
       expect(state.session.state).toBe("parked");
-      expect(state.assignment).toBeNull();
+      expect(state.assignment).toBeUndefined(); // participant DTO omits it entirely, not just null
       expect(state.delivery).toBeNull();
     } finally {
       await cleanup(supabase, sessionId, participantId);

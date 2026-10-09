@@ -17,6 +17,7 @@ const STOP_REASON_MESSAGES: Record<string, string> = {
 };
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const turnStart = Date.now();
   const { id } = await params;
   if (!(await requireSessionAccess(id))) return NextResponse.json({ error: "not_found" }, { status: 404 });
 
@@ -96,6 +97,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   });
 
   const turn = result.turn;
+
+  console.log("[discovery-turn-latency]", {
+    sessionId: id,
+    totalMs: Date.now() - turnStart,
+    modelMs: result.latencyMs,
+    fallback: result.fallback,
+  });
 
   await supabase.from("extraction_snapshots").insert({
     session_id: id,
