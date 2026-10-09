@@ -100,8 +100,9 @@ function ParticipateForm() {
       <PageShell>
         <Card className="flex flex-col gap-4">
           <h1 className="text-xl font-semibold">Which sounds most like your situation right now?</h1>
+          <p className="text-sm text-[var(--ef-muted)]">These are just optional starting points — pick one if it helps, or skip straight to describing your own decision in your own words.</p>
           <div className="grid grid-cols-2 gap-3">
-            {SITUATION_CARDS.map((card) => (
+            {SITUATION_CARDS.filter((card) => card !== "skip").map((card) => (
               <button
                 key={card}
                 onClick={() => {
@@ -114,6 +115,15 @@ function ParticipateForm() {
               </button>
             ))}
           </div>
+          <button
+            onClick={() => {
+              setSituationCard("skip");
+              setStep("goal");
+            }}
+            className="rounded-lg border border-[var(--ef-border)] bg-white px-4 py-3 text-left text-sm font-medium hover:bg-[var(--ef-accent-soft)] min-h-[48px] underline self-start"
+          >
+            Describe my own recent decision instead →
+          </button>
         </Card>
       </PageShell>
     );
