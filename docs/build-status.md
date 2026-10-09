@@ -2,6 +2,18 @@
 
 Last updated: 2026-10-09 (continuous, see git log for exact times).
 
+## ✅ 2026-10-09, before 2:15 PM — admin-only researcher-usability change
+
+Scope: `/admin` pages/routes only, plus the one explicitly-authorized exception (reading `?pilot=` on `/participate`). State machine, evidence, delivery untouched.
+
+- Every state card on `/admin` (incl. Parked, Follow-up due) now links to a new `/admin/sessions?state=<state>` list page.
+- Each list row: pilot label, state, topic, parked reason (plain language, already stored), created time, last participant activity, follow-up due date — all in IST, labelled, DB still UTC.
+- "Last participant activity" is computed from `messages` (role=participant), not `updated_at` — confirmed `updated_at` was an hour stale on an old row (the `is_test` migration's side effect the instruction warned about).
+- Real/test/all data filter, defaulting to real, on the dashboard counts and every session list.
+- Optional pilot label (migration 0013, nullable, additive): `/participate?pilot=<label>` stored on the session, shown + clickable-to-filter in admin lists.
+- Verified live against production with real Playwright runs (not just locally): clickable cards, correct columns, IST labelling, real-filter hides test fixtures while all/test reveal them, a real `/participate?pilot=anand` session stored and visible in the filtered list. Zero secrets in the scanned pages.
+- 61 Vitest + 13 deterministic Playwright passing, no regressions; `tsc`/lint/`next build` all clean. Redeployed to the same production URL.
+
 ## ✅ 2026-10-09 pre-pilot P0/P1 repair pass (tag `checkpoint-pre-repair` marks the state before this)
 
 Source: `EvidenceFirst_Fullstack_Live_Audit_Oct9.md` + `EvidenceFirst_Fullstack_QA_Matrix_Oct9.json`. Worked the P0 list only, in order, one commit per item, then P1 since time remained. Pilots at 3:00 PM IST; stopped new work at 2:30 PM IST as instructed.
