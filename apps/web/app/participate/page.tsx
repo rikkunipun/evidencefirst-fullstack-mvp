@@ -57,10 +57,11 @@ export default function ParticipatePage() {
           <h1 className="text-xl font-semibold">Before we start</h1>
           <ul className="list-disc pl-5 text-sm text-[var(--ef-muted)] flex flex-col gap-2">
             <li>This is an AI-assisted research prototype. Your answers are sent to our model provider to generate the next question.</li>
-            <li>We record your typed or transcribed answers, your confirmed statement, and your confidence scores.</li>
+            <li>We record your typed answers, your confirmed statement, and your confidence scores.</li>
             <li>A researcher may review your session for this study.</li>
             <li>You can stop at any time; stopping cancels anything not yet delivered to you.</li>
             <li>This does not cover political, religious, identity, crisis, addiction-treatment, or individualized medical/legal/financial topics.</li>
+            <li>This study is for adults only. You must be 18 or older to take part.</li>
           </ul>
           <label className="flex items-start gap-3 text-sm">
             <input
@@ -69,7 +70,7 @@ export default function ParticipatePage() {
               onChange={(e) => setConsented(e.target.checked)}
               className="mt-1 h-5 w-5"
             />
-            I understand and agree to continue.
+            I am 18 or older, and I understand and agree to continue.
           </label>
           <Button disabled={!consented} onClick={() => setStep("situation")}>
             Continue

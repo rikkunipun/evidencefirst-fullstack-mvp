@@ -5,6 +5,7 @@ import { getServiceClient } from "@/lib/supabase/service-client";
 interface ExportRow {
   participantCode: string;
   sessionId: string;
+  isTest: boolean;
   state: string;
   parkReason: string | null;
   packId: string | null;
@@ -29,10 +30,20 @@ export async function GET(req: NextRequest) {
   const researcher = await requireResearcherOrResponse();
   if (researcher instanceof NextResponse) return researcher;
 
-  const format = new URL(req.url).searchParams.get("format") === "csv" ? "csv" : "json";
+  const url = new URL(req.url);
+  const format = url.searchParams.get("format") === "csv" ? "csv" : "json";
+  // Exports default to real consented data only. Synthetic QA/audit
+  // fixtures (is_test=true) are excluded unless explicitly requested -
+  // they are never deleted, just never the default export.
+  const includeTest = url.searchParams.get("includeTest") === "true";
   const supabase = getServiceClient();
 
-  const { data: sessions } = await supabase.from("sessions").select("id, state, park_reason, pack_topic, participant_id").not("state", "in", '("consented","context","discovery","confirmation","eligibility_check")');
+  let query = supabase
+    .from("sessions")
+    .select("id, state, park_reason, pack_topic, participant_id, is_test")
+    .not("state", "in", '("consented","context","discovery","confirmation","eligibility_check")');
+  if (!includeTest) query = query.eq("is_test", false);
+  const { data: sessions } = await query;
   if (!sessions) return NextResponse.json({ error: "server_error" }, { status: 500 });
 
   const rows: ExportRow[] = [];
@@ -51,6 +62,7 @@ export async function GET(req: NextRequest) {
     rows.push({
       participantCode: participant?.participant_code ?? "unknown",
       sessionId: s.id,
+      isTest: s.is_test,
       state: s.state,
       parkReason: s.park_reason,
       packId: assignment?.pack_id ?? s.pack_topic,
@@ -65,10 +77,12 @@ export async function GET(req: NextRequest) {
   }
 
   if (format === "json") {
-    return NextResponse.json({ exportedAt: new Date().toISOString(), rowCount: rows.length, rows });
+    return NextResponse.json({ exportedAt: new Date().toISOString(), includeTest, rowCount: rows.length, rows });
   }
 
-  const headers = Object.keys(rows[0] ?? { participantCode: "", sessionId: "", state: "", parkReason: "", packId: "", condition: "", baselineScore: "", preEvidenceScore: "", postEvidenceScore: "", followupScore: "", claimIds: "", deliveredAt: "" });
+  const headers = Object.keys(
+    rows[0] ?? { participantCode: "", sessionId: "", isTest: "", state: "", parkReason: "", packId: "", condition: "", baselineScore: "", preEvidenceScore: "", postEvidenceScore: "", followupScore: "", claimIds: "", deliveredAt: "" },
+  );
   const csvLines = [headers.join(","), ...rows.map((r) => headers.map((h) => csvCell((r as unknown as Record<string, unknown>)[h])).join(","))];
   return new NextResponse(csvLines.join("\n"), {
     headers: { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": `attachment; filename="evidencefirst-export-${Date.now()}.csv"` },

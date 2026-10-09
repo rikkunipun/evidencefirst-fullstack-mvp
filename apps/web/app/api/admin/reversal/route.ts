@@ -36,6 +36,10 @@ export async function POST(req: NextRequest) {
       submitted_claim: body.submittedClaim,
       supported,
       matched_claim_ids: matchedClaimIds,
+      // A reversal run is always a researcher QA probe, never real
+      // participant data - mark it as test by construction.
+      is_test: true,
+      test_run_id: "reversal-qa",
     })
     .select("id, created_at")
     .single();

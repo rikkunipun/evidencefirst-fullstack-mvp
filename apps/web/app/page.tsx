@@ -16,7 +16,8 @@ export default function LandingPage() {
         <h2 className="text-lg font-semibold">What this is</h2>
         <ul className="list-disc pl-5 text-sm text-[var(--ef-muted)] flex flex-col gap-2">
           <li>An AI-assisted research prototype, not a medical, legal, or financial adviser.</li>
-          <li>You can type or speak your answers, one question at a time.</li>
+          <li>You type your answers, one question at a time.</li>
+          <li>You must be 18 or older to take part.</li>
           <li>You can stop at any point — nothing is shared beyond this study.</li>
           <li>If your topic isn't covered by our reviewed sources, we'll tell you honestly instead of guessing.</li>
         </ul>
